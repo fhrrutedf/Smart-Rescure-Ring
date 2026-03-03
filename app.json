@@ -1,11 +1,11 @@
 {
   "expo": {
-    "name": "Smart Rescuer AI",
-    "slug": "smart-rescuer-ai",
+    "name": "Smart Rescuer",
+    "slug": "smartrescuer",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "smartrescuerai",
+    "scheme": "smartrescuer",
     "userInterfaceStyle": "dark",
     "newArchEnabled": true,
     "splash": {
@@ -15,10 +15,10 @@
     },
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "com.smartrescuerai"
+      "bundleIdentifier": "com.smartrescuer.app"
     },
     "android": {
-      "package": "com.smartrescuerai",
+      "package": "com.smartrescuer.app",
       "adaptiveIcon": {
         "backgroundColor": "#0A0C0E",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
