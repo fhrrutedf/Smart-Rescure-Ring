@@ -5,6 +5,7 @@ import {
   StyleSheet,
   StatusBar,
   Platform,
+  ScrollView,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
@@ -12,6 +13,7 @@ import COLORS from "@/constants/colors";
 import { CameraSection } from "@/components/CameraSection";
 import { VitalsPanel } from "@/components/VitalsPanel";
 import { DiagnosisPanel } from "@/components/DiagnosisPanel";
+import { EarlyRiskDetection } from "@/components/EarlyRiskDetection";
 import { InstructionsPanel } from "@/components/InstructionsPanel";
 
 export default function HomeScreen() {
@@ -39,9 +41,16 @@ export default function HomeScreen() {
       </View>
 
       <View style={styles.panelsSection}>
-        <VitalsPanel />
-        <DiagnosisPanel />
-        <InstructionsPanel />
+        <ScrollView
+          style={styles.panelsScroll}
+          contentContainerStyle={styles.panelsScrollContent}
+          showsVerticalScrollIndicator={false}
+        >
+          <VitalsPanel />
+          <DiagnosisPanel />
+          <EarlyRiskDetection />
+          <InstructionsPanel />
+        </ScrollView>
       </View>
 
       <View
@@ -126,6 +135,13 @@ const styles = StyleSheet.create({
   panelsSection: {
     flex: 5,
     minHeight: 0,
+  },
+  panelsScroll: {
+    flex: 1,
+  },
+  panelsScrollContent: {
+    flexGrow: 1,
+    paddingBottom: 8,
   },
   bottomBar: {
     flexDirection: "row",
