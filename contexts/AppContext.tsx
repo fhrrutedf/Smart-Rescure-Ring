@@ -57,6 +57,11 @@ function fuseDiagnosis(
     return { diagnosis: "critical", status: "emergency" };
   }
 
+  // SOS override: if bleeding is detected with any abnormal vitals, it's critical
+  if (visionAlert === "bleeding" && (isAbnormalVitals || isCriticalVitals)) {
+    return { diagnosis: "bleeding", status: "emergency" };
+  }
+
   if (isAbnormalVitals && hasVisionAlert) {
     if (visionAlert === "bleeding") return { diagnosis: "bleeding", status: "emergency" };
     if (visionAlert === "fall") return { diagnosis: "fall", status: "emergency" };

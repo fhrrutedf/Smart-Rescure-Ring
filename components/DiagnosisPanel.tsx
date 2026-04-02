@@ -118,7 +118,7 @@ export function DiagnosisPanel() {
     <View style={styles.container}>
       <View style={styles.header}>
         <MaterialCommunityIcons name="brain" size={15} color={COLORS.accent} />
-        <Text style={styles.headerTitle}>AI DIAGNOSIS</Text>
+        <Text style={styles.headerTitle}>AI DIAGNOSIS ENGINE v4.2</Text>
         {aiRunning && (
           <View style={styles.runningBadge}>
             <Text style={styles.runningText}>FUSING</Text>

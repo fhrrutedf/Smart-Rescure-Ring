@@ -8,13 +8,25 @@ export interface IStorage {
   getUser(id: string): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
+  saveDetection(detection: any): Promise<void>;
+  getLatestDetections(): Promise<any[]>;
 }
 
 export class MemStorage implements IStorage {
   private users: Map<string, User>;
+  private detections: any[] = [];
 
   constructor() {
     this.users = new Map();
+  }
+
+  async saveDetection(detection: any): Promise<void> {
+    this.detections.unshift({ ...detection, timestamp: new Date().toISOString() });
+    if (this.detections.length > 50) this.detections.pop();
+  }
+
+  async getLatestDetections(): Promise<any[]> {
+    return this.detections;
   }
 
   async getUser(id: string): Promise<User | undefined> {

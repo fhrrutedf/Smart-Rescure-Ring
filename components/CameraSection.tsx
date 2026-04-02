@@ -61,137 +61,70 @@ const CLASS_PRIORITY: Record<DetectionClass, number> = {
   INJURY: 1,
 };
 
-// ─── Vision Engine ────────────────────────────────────────────────────────────
+// ─── Vision Engine (REAL API) ──────────────────────────────────────────────────
 //
-// Simulates YOLOv8n TFLite on-device inference. In a native build this would be
-// replaced with actual TFLite model output. Here we produce realistic detections
-// that: appear gradually, hold position with small jitter, fade out cleanly, and
-// scale with the current emergency scenario from AppContext.
+// Calls the backend /api/analyze with camera snapshots to perform real-time
+// AI medical diagnosis using Gemini Vision.
 
-type Scenario = "normal" | "spike";
-
-interface TrackState {
-  id: string;
-  cls: DetectionClass;
-  x: number;
-  y: number;
-  w: number;
-  h: number;
-  confidence: number;
-  holdFrames: number;
-  maxHold: number;
-  vx: number;
-  vy: number;
-}
-
-function makeId() {
-  return Math.random().toString(36).slice(2, 9);
-}
-
-const SCENARIO_POOLS: Record<Scenario, { cls: DetectionClass; xRange: [number,number]; yRange: [number,number]; wRange: [number,number]; hRange: [number,number]; confRange: [number,number] }[]> = {
-  normal: [
-    { cls: "INJURY",        xRange: [30,55], yRange: [40,55], wRange: [18,28], hRange: [20,30], confRange: [0.52,0.65] },
-  ],
-  spike: [
-    { cls: "BLEEDING",      xRange: [12,30], yRange: [22,40], wRange: [28,40], hRange: [30,42], confRange: [0.72,0.94] },
-    { cls: "FRACTURE",      xRange: [48,62], yRange: [30,50], wRange: [22,32], hRange: [28,38], confRange: [0.68,0.88] },
-    { cls: "BURN",          xRange: [20,40], yRange: [45,60], wRange: [24,36], hRange: [22,32], confRange: [0.70,0.90] },
-    { cls: "PERSON FALLEN", xRange: [10,25], yRange: [20,35], wRange: [55,70], hRange: [50,65], confRange: [0.76,0.95] },
-    { cls: "UNCONSCIOUS",   xRange: [10,25], yRange: [20,35], wRange: [55,70], hRange: [50,65], confRange: [0.66,0.82] },
-    { cls: "INJURY",        xRange: [30,55], yRange: [40,58], wRange: [18,28], hRange: [18,28], confRange: [0.55,0.72] },
-  ],
-};
-
-function spawnDetection(scenario: Scenario, existingClasses: Set<DetectionClass>): TrackState | null {
-  const pool = SCENARIO_POOLS[scenario].filter(p => !existingClasses.has(p.cls));
-  if (pool.length === 0) return null;
-
-  // Pick weighted by priority
-  const weighted = pool.flatMap(p => Array(CLASS_PRIORITY[p.cls]).fill(p));
-  const template = weighted[Math.floor(Math.random() * weighted.length)] as typeof pool[0];
-
-  const rand = (a: number, b: number) => a + Math.random() * (b - a);
-
-  return {
-    id: makeId(),
-    cls: template.cls,
-    x: rand(...template.xRange),
-    y: rand(...template.yRange),
-    w: rand(...template.wRange),
-    h: rand(...template.hRange),
-    confidence: rand(...template.confRange),
-    holdFrames: 0,
-    maxHold: Math.floor(rand(8, 22)),
-    vx: (Math.random() - 0.5) * 0.15,
-    vy: (Math.random() - 0.5) * 0.08,
-  };
-}
-
-function useVisionEngine(scenario: "normal" | "spike", aiRunning: boolean): Detection[] {
-  const tracksRef = useRef<TrackState[]>([]);
+function useVisionEngine(aiRunning: boolean, cameraRef: React.RefObject<any>): Detection[] {
   const [detections, setDetections] = useState<Detection[]>([]);
-  const frameRef = useRef(0);
+  const isAnalyzing = useRef(false);
 
   useEffect(() => {
-    if (!aiRunning) {
-      tracksRef.current = [];
+    if (!aiRunning || !cameraRef.current) {
       setDetections([]);
       return;
     }
 
-    // ~200ms = 5 FPS
-    const interval = setInterval(() => {
-      frameRef.current += 1;
+    const interval = setInterval(async () => {
+      if (isAnalyzing.current || !cameraRef.current) return;
 
-      let tracks = tracksRef.current.map(t => ({
-        ...t,
-        holdFrames: t.holdFrames + 1,
-        // small jitter drift
-        x: Math.max(5, Math.min(85, t.x + t.vx + (Math.random() - 0.5) * 0.12)),
-        y: Math.max(5, Math.min(75, t.y + t.vy + (Math.random() - 0.5) * 0.08)),
-        // confidence oscillation ±2%
-        confidence: Math.max(0.50, Math.min(0.97, t.confidence + (Math.random() - 0.5) * 0.025)),
-      }));
+      try {
+        isAnalyzing.current = true;
+        // Take snapshot (base64)
+        const photo = await cameraRef.current.takePictureAsync({
+          base64: true,
+          quality: 0.5,
+          skipProcessing: true,
+        });
 
-      // Remove expired tracks
-      tracks = tracks.filter(t => t.holdFrames < t.maxHold);
+        if (photo?.base64) {
+          const response = await fetch("/api/analyze", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ imageData: `data:image/jpeg;base64,${photo.base64}` }),
+          });
 
-      // Decide target count based on scenario
-      const targetCount = scenario === "spike"
-        ? (Math.random() < 0.15 ? 3 : Math.random() < 0.45 ? 2 : 1)
-        : (Math.random() < 0.35 ? 1 : 0);
-
-      // Spawn new tracks if needed
-      if (tracks.length < targetCount) {
-        const existingClasses = new Set(tracks.map(t => t.cls)) as Set<DetectionClass>;
-        const newTrack = spawnDetection(scenario, existingClasses);
-        if (newTrack) tracks = [...tracks, newTrack];
+          const data = await response.json();
+          if (data.detections) {
+            // Map real backend detections to the UI format
+            setDetections(data.detections.map((d: any) => ({
+              id: Math.random().toString(36).slice(2, 9),
+              cls: d.class as DetectionClass,
+              confidence: d.confidence,
+              // Random positioning for the box since Gemini doesn't always provide coordinates
+              // (In production, we would use bounding box values if provided)
+              x: 20 + Math.random() * 40,
+              y: 30 + Math.random() * 30,
+              w: 30,
+              h: 30,
+              description: d.description,
+              instructions: d.instructions,
+            })));
+          }
+        }
+      } catch (error) {
+        console.error("Analysis Error:", error);
+      } finally {
+        isAnalyzing.current = false;
       }
-
-      // Randomly drop a track early (simulates object leaving frame)
-      if (tracks.length > 0 && Math.random() < 0.04) {
-        tracks = tracks.slice(1);
-      }
-
-      tracksRef.current = tracks;
-
-      setDetections(tracks.map(t => ({
-        id: t.id,
-        cls: t.cls,
-        confidence: t.confidence,
-        x: t.x,
-        y: t.y,
-        w: t.w,
-        h: t.h,
-      })));
-    }, 200);
+    }, 4000); // Every 4 seconds to balance performance and rate limits
 
     return () => {
       clearInterval(interval);
-      tracksRef.current = [];
       setDetections([]);
     };
-  }, [scenario, aiRunning]);
+  }, [aiRunning, cameraRef]);
 
   return detections;
 }
@@ -370,11 +303,9 @@ function InferenceBar({ fps, count }: { fps: number; count: number }) {
 export function CameraSection() {
   const [permission, requestPermission] = useCameraPermissions();
   const { visionAlert, emergencyStatus, setCameraReady, aiRunning } = useApp();
+  const cameraRef = useRef<any>(null);
 
-  // Derive scenario from visionAlert (matches AppContext logic)
-  const scenario: Scenario = visionAlert !== "none" ? "spike" : "normal";
-
-  const detections = useVisionEngine(scenario, aiRunning);
+  const detections = useVisionEngine(aiRunning, cameraRef);
 
   // Live FPS counter (frames where detections were computed)
   const [displayFps, setDisplayFps] = useState(5);
@@ -422,7 +353,12 @@ export function CameraSection() {
     <View style={styles.container}>
       {/* Camera feed */}
       {Platform.OS !== "web" ? (
-        <CameraView style={StyleSheet.absoluteFill} facing="back" onCameraReady={onCameraReady} />
+        <CameraView
+          ref={cameraRef}
+          style={StyleSheet.absoluteFill}
+          facing="back"
+          onCameraReady={onCameraReady}
+        />
       ) : (
         <View style={[StyleSheet.absoluteFill, styles.webCameraFallback]}>
           <MaterialCommunityIcons name="camera" size={40} color={COLORS.textMuted} />

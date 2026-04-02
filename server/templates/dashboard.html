@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Rescuer Dashboard | لوحة تحكم المنقذ الذكي</title>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;700;900&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #0D1117;
+            --bg-card: rgba(22, 27, 34, 0.7);
+            --accent: #00D4FF;
+            --accent-glow: rgba(0, 212, 255, 0.3);
+            --text: #F0F6FC;
+            --text-muted: #8B949E;
+            --status-red: #FF1744;
+            --status-green: #00E676;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Cairo', sans-serif;
+        }
+
+        body {
+            background-color: var(--bg);
+            color: var(--text);
+            min-h: 100vh;
+            padding: 20px;
+            background-image: 
+                radial-gradient(circle at 10% 10%, rgba(0, 212, 255, 0.05) 0%, transparent 40%),
+                radial-gradient(circle at 90% 90%, rgba(139, 148, 158, 0.05) 0%, transparent 40%);
+        }
+
+        .dashboard {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        /* Header */
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+            background: var(--bg-card);
+            backdrop-filter: blur(10px);
+            padding: 20px;
+            border-radius: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .logo h1 {
+            font-size: 24px;
+            font-weight: 900;
+            background: linear-gradient(90deg, #00D4FF, #7000FF);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .lab-badge {
+            font-size: 10px;
+            color: var(--text-muted);
+            letter-spacing: 2px;
+            font-weight: 700;
+        }
+
+        .status-badge {
+            background: rgba(0, 230, 118, 0.1);
+            color: var(--status-green);
+            padding: 8px 16px;
+            border-radius: 30px;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            border: 1px solid rgba(0, 230, 118, 0.3);
+        }
+
+        .pulse {
+            width: 10px;
+            height: 10px;
+            background: var(--status-green);
+            border-radius: 50%;
+            box-shadow: 0 0 10px var(--status-green);
+            animation: pulse-animation 2s infinite;
+        }
+
+        @keyframes pulse-animation {
+            0% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.5); opacity: 0.5; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+
+        /* Grid Layout */
+        .grid {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 20px;
+        }
+
+        /* Live Feed */
+        .live-feed {
+            background: var(--bg-card);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 25px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .feed-item {
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 15px;
+            display: flex;
+            gap: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            transition: all 0.3s ease;
+        }
+
+        .feed-item:hover {
+            background: rgba(255, 255, 255, 0.06);
+            transform: translateY(-3px);
+            border-color: var(--accent);
+        }
+
+        .feed-image {
+            width: 150px;
+            height: 100px;
+            background: #000;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            color: var(--text-muted);
+            border: 1px solid var(--accent-glow);
+        }
+
+        .feed-content {
+            flex: 1;
+        }
+
+        .feed-title {
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--accent);
+            margin-bottom: 5px;
+        }
+
+        .feed-meta {
+            font-size: 12px;
+            color: var(--text-muted);
+            margin-bottom: 10px;
+        }
+
+        .feed-desc {
+            font-size: 14px;
+            line-height: 1.6;
+        }
+
+        .instructions {
+            margin-top: 10px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .chip {
+            background: rgba(0, 212, 255, 0.1);
+            color: var(--accent);
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 700;
+        }
+
+        /* Stats Sidebar */
+        .sidebar {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .stat-card {
+            background: var(--bg-card);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 25px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            text-align: center;
+        }
+
+        .stat-number {
+            font-size: 48px;
+            font-weight: 900;
+            color: var(--accent);
+            margin: 10px 0;
+        }
+
+        .stat-label {
+            color: var(--text-muted);
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        /* Empty State */
+        .empty-state {
+            text-align: center;
+            padding: 50px;
+            color: var(--text-muted);
+        }
+
+        @media (max-width: 900px) {
+            .grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="dashboard">
+        <header>
+            <div class="logo">
+                <p class="lab-badge">NAWAF & MULK ALLAH AI LAB</p>
+                <h1>Smart Rescuer Dashboard</h1>
+            </div>
+            <div class="status-badge">
+                <div class="pulse"></div>
+                LIVE MONITORING
+            </div>
+        </header>
+
+        <div class="grid">
+            <main class="live-feed">
+                <h2 style="margin-bottom: 20px;">حالات الطوارئ المكتشفة (مباشر)</h2>
+                <div id="feed-container">
+                    <div class="empty-state">جاري الاتصال بالسيرفر...</div>
+                </div>
+            </main>
+
+            <aside class="sidebar">
+                <div class="stat-card">
+                    <div class="stat-label">إجمالي الإصابات المرصودة</div>
+                    <div class="stat-number" id="total-count">0</div>
+                    <p style="color: var(--text-muted);">آخر 24 ساعة</p>
+                </div>
+
+                <div class="stat-card" style="border-color: var(--status-red);">
+                    <div class="stat-label" style="color: var(--status-red);">الحالات الحرجة</div>
+                    <div class="stat-number" style="color: var(--status-red);" id="critical-count">0</div>
+                    <p style="color: var(--text-muted);">نزيف أو كسور</p>
+                </div>
+            </aside>
+        </div>
+    </div>
+
+    <script>
+        async function fetchDashboard() {
+            try {
+                const response = await fetch('/api/dashboard');
+                const data = await response.json();
+                renderFeed(data);
+            } catch (error) {
+                console.error("Dashboard Fetch Error:", error);
+            }
+        }
+
+        function renderFeed(events) {
+            const container = document.getElementById('feed-container');
+            const totalCount = document.getElementById('total-count');
+            const criticalCount = document.getElementById('critical-count');
+
+            if (!events || events.length === 0) {
+                container.innerHTML = '<div class="empty-state">لا يوجد بلاغات حالياً.</div>';
+                return;
+            }
+
+            totalCount.innerText = events.length;
+            
+            let criticals = 0;
+            container.innerHTML = events.map(event => {
+                const det = event.detections[0]; // Take first detection for summary
+                if (det.class === 'BLEEDING' || det.class === 'FRACTURE') criticals++;
+                
+                return `
+                    <div class="feed-item">
+                        <div class="feed-image">
+                            [CAMERA SNAPSHOT]
+                        </div>
+                        <div class="feed-content">
+                            <div class="feed-title">${det.class} (${Math.round(det.confidence * 100)}%)</div>
+                            <div class="feed-meta">تم الرصد في: ${new Date(event.timestamp).toLocaleTimeString('ar-EG')}</div>
+                            <div class="feed-desc">${det.description}</div>
+                            <div class="instructions">
+                                ${det.instructions.map(ins => `<span class="chip">${ins}</span>`).join('')}
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            criticalCount.innerText = criticals;
+        }
+
+        // Initial fetch and poll every 5 seconds
+        fetchDashboard();
+        setInterval(fetchDashboard, 5000);
+    </script>
+</body>
+</html>
