@@ -19,6 +19,7 @@ import Animated, {
   runOnJS,
 } from "react-native-reanimated";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
+import * as Speech from "expo-speech";
 import COLORS from "@/constants/colors";
 import { useApp } from "@/contexts/AppContext";
 
@@ -30,7 +31,37 @@ type DetectionClass =
   | "BURN"
   | "PERSON FALLEN"
   | "UNCONSCIOUS"
-  | "INJURY";
+  | "INJURY"
+  | "NONE";
+
+// ─── AI TTS Function ─────────────────────────────────────────────────────────
+
+function speakAIResult(detections: any[]) {
+  if (!detections || detections.length === 0) {
+    Speech.speak("لا يوجد إصابات واضحة", { language: "ar-SA", rate: 0.9 });
+    return;
+  }
+  
+  const d = detections[0];
+  const className = d.class || d.cls || "إصابة";
+  const confidence = Math.round((d.confidence || 0) * 100);
+  
+  let message = `كشف ${className} بنسبة ${confidence} بالمئة.`;
+  
+  if (d.description) {
+    message += ` ${d.description}`;
+  }
+  
+  if (d.instructions && d.instructions.length > 0) {
+    message += ` الإجراء: ${d.instructions[0]}`;
+  }
+  
+  Speech.speak(message, { 
+    language: "ar-SA", 
+    pitch: 1.1,
+    rate: 0.9 
+  });
+}
 
 interface Detection {
   id: string;
@@ -98,7 +129,7 @@ function useVisionEngine(aiRunning: boolean, cameraRef: React.RefObject<any>): D
           const data = await response.json();
           if (data.detections) {
             // Map real backend detections to the UI format
-            setDetections(data.detections.map((d: any) => ({
+            const mappedDetections = data.detections.map((d: any) => ({
               id: Math.random().toString(36).slice(2, 9),
               cls: d.class as DetectionClass,
               confidence: d.confidence,
@@ -110,7 +141,10 @@ function useVisionEngine(aiRunning: boolean, cameraRef: React.RefObject<any>): D
               h: 30,
               description: d.description,
               instructions: d.instructions,
-            })));
+            }));
+            setDetections(mappedDetections);
+            // 🔊 Speak AI result ONLY when real photo is analyzed
+            speakAIResult(data.detections);
           }
         }
       } catch (error) {

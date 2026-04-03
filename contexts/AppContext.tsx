@@ -254,16 +254,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setEmergencyStatus(status);
   }, [vitals, visionAlert]);
 
-  // Audio alerts when emergency status changes
-  useEffect(() => {
-    if (emergencyStatus === "warning") {
-      playAlertHaptic("warning");
-      speakDiagnosis(diagnosis, "warning");
-    } else if (emergencyStatus === "emergency") {
-      playAlertHaptic("emergency");
-      speakDiagnosis(diagnosis, "emergency");
-    }
-  }, [emergencyStatus, diagnosis]);
+  // Audio alerts when emergency status changes - REMOVED: only speak on real photo analysis
+  // useEffect(() => {
+  //   if (emergencyStatus === "warning") {
+  //     playAlertHaptic("warning");
+  //     speakDiagnosis(diagnosis, "warning");
+  //   } else if (emergencyStatus === "emergency") {
+  //     playAlertHaptic("emergency");
+  //     speakDiagnosis(diagnosis, "emergency");
+  //   }
+  // }, [emergencyStatus, diagnosis]);
 
   const value = useMemo<AppContextValue>(
     () => ({
