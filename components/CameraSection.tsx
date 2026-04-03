@@ -23,6 +23,11 @@ import * as Speech from "expo-speech";
 import COLORS from "@/constants/colors";
 import { useApp } from "@/contexts/AppContext";
 
+// API URL - uses localhost for development
+const API_URL = Platform.OS === 'web' 
+  ? (process.env.EXPO_PUBLIC_API_URL || "http://localhost:5000")
+  : (process.env.EXPO_PUBLIC_API_URL || "http://YOUR_COMPUTER_IP:5000");
+
 // ─── Detection Types ─────────────────────────────────────────────────────────
 
 type DetectionClass =
@@ -120,11 +125,15 @@ function useVisionEngine(aiRunning: boolean, cameraRef: React.RefObject<any>): D
         });
 
         if (photo?.base64) {
-          const response = await fetch("/api/analyze", {
+          const response = await fetch(`${API_URL}/api/analyze`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ imageData: `data:image/jpeg;base64,${photo.base64}` }),
           });
+
+          if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+          }
 
           const data = await response.json();
           if (data.detections) {
