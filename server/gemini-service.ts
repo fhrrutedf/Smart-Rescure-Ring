@@ -1,7 +1,12 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
-const GEMINI_API_KEY = process.env.GEMINI_API_KEY || "AIzaSyCskZW61HLc8e_qFP0j3sgevjUZQP7Itd8";
-const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+
+if (!GEMINI_API_KEY) {
+  console.warn("⚠️ GEMINI_API_KEY not set. AI analysis will be disabled.");
+}
+
+const genAI = GEMINI_API_KEY ? new GoogleGenerativeAI(GEMINI_API_KEY) : null;
 
 export interface DiagnosisResult {
   class: string;
@@ -12,6 +17,11 @@ export interface DiagnosisResult {
 
 export async function analyzeImage(imageBase64: string): Promise<DiagnosisResult[]> {
   try {
+    if (!genAI) {
+      console.warn("AI analysis skipped: GEMINI_API_KEY not configured");
+      return [];
+    }
+
     const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
     const prompt = `Analyze this medical emergency image. Identify the type of injury (e.g., BLEEDING, FRACTURE, BURN, PERSON FALLEN, UNCONSCIOUS, INJURY).

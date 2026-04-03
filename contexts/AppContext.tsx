@@ -8,8 +8,8 @@ import React, {
   ReactNode,
   useCallback,
 } from "react";
-import { Audio } from "expo-av";
 import * as Speech from "expo-speech";
+import * as Haptics from "expo-haptics";
 import { EmergencyType, getInstructions } from "@/constants/medical-instructions";
 
 export interface VitalSigns {
@@ -154,20 +154,19 @@ function generateVisionAlert(): VisionAlert {
 
 // ─── Audio Alert System ──────────────────────────────────────────────────────
 
-// Base64 encoded beep sounds
-const WARNING_BEEP = "data:audio/wav;base64,UklGRl9vT19XQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YU..."; // Short beep
-const EMERGENCY_BEEP = "data:audio/wav;base64,UklGRl9vT19XQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YU..."; // Siren-like
-
-async function playAlertSound(type: "warning" | "emergency") {
+async function playAlertHaptic(type: "warning" | "emergency") {
   try {
-    const { sound } = await Audio.Sound.createAsync(
-      { uri: type === "warning" ? WARNING_BEEP : EMERGENCY_BEEP },
-      { shouldPlay: true, volume: 0.8 }
-    );
-    await sound.playAsync();
-    setTimeout(() => sound.unloadAsync(), 1000);
+    if (type === "emergency") {
+      // Strong vibration pattern for emergency
+      await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      setTimeout(() => Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error), 300);
+      setTimeout(() => Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error), 600);
+    } else {
+      // Warning pattern
+      await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+    }
   } catch (error) {
-    console.log("Audio alert failed:", error);
+    console.log("Haptic feedback failed:", error);
   }
 }
 
@@ -258,10 +257,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // Audio alerts when emergency status changes
   useEffect(() => {
     if (emergencyStatus === "warning") {
-      playAlertSound("warning");
+      playAlertHaptic("warning");
       speakDiagnosis(diagnosis, "warning");
     } else if (emergencyStatus === "emergency") {
-      playAlertSound("emergency");
+      playAlertHaptic("emergency");
       speakDiagnosis(diagnosis, "emergency");
     }
   }, [emergencyStatus, diagnosis]);
