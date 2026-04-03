@@ -8,7 +8,9 @@ import React, {
   ReactNode,
   useCallback,
 } from "react";
-import { EmergencyType } from "@/constants/medical-instructions";
+import { Audio } from "expo-av";
+import * as Speech from "expo-speech";
+import { EmergencyType, getInstructions } from "@/constants/medical-instructions";
 
 export interface VitalSigns {
   heartRate: number;
@@ -150,6 +152,48 @@ function generateVisionAlert(): VisionAlert {
   return "none";
 }
 
+// ─── Audio Alert System ──────────────────────────────────────────────────────
+
+// Base64 encoded beep sounds
+const WARNING_BEEP = "data:audio/wav;base64,UklGRl9vT19XQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YU..."; // Short beep
+const EMERGENCY_BEEP = "data:audio/wav;base64,UklGRl9vT19XQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YU..."; // Siren-like
+
+async function playAlertSound(type: "warning" | "emergency") {
+  try {
+    const { sound } = await Audio.Sound.createAsync(
+      { uri: type === "warning" ? WARNING_BEEP : EMERGENCY_BEEP },
+      { shouldPlay: true, volume: 0.8 }
+    );
+    await sound.playAsync();
+    setTimeout(() => sound.unloadAsync(), 1000);
+  } catch (error) {
+    console.log("Audio alert failed:", error);
+  }
+}
+
+function speakDiagnosis(diagnosis: EmergencyType, status: "warning" | "emergency") {
+  if (diagnosis === "none") return;
+  
+  const urgency = status === "emergency" ? "حالة طارئة" : "تحذير";
+  const messages: Record<EmergencyType, string> = {
+    bleeding: `${urgency}. كشف نزيف. قم بالضغط على الجرح فوراً.`,
+    cardiac: `${urgency}. عدم انتظام ضربات القلب. تحقق من النبض.`,
+    fall: `${urgency}. كشف سقوط. تحقق من الإصابات الرأسية.`,
+    burn: `${urgency}. كشف حروق. ابدأ بتبريد المنطقة.`,
+    critical: `${urgency}. حالة حرجة. اتصل بالإسعاف فوراً.`,
+    none: "",
+  };
+  
+  const message = messages[diagnosis];
+  if (message) {
+    Speech.speak(message, { 
+      language: "ar-SA", 
+      pitch: status === "emergency" ? 1.2 : 1.0,
+      rate: status === "emergency" ? 1.1 : 0.9,
+    });
+  }
+}
+
 const INITIAL_VITALS: VitalSigns = {
   heartRate: 72,
   spo2: 98,
@@ -210,6 +254,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setDiagnosis(newDx);
     setEmergencyStatus(status);
   }, [vitals, visionAlert]);
+
+  // Audio alerts when emergency status changes
+  useEffect(() => {
+    if (emergencyStatus === "warning") {
+      playAlertSound("warning");
+      speakDiagnosis(diagnosis, "warning");
+    } else if (emergencyStatus === "emergency") {
+      playAlertSound("emergency");
+      speakDiagnosis(diagnosis, "emergency");
+    }
+  }, [emergencyStatus, diagnosis]);
 
   const value = useMemo<AppContextValue>(
     () => ({
