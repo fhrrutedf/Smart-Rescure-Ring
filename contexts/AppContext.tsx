@@ -10,7 +10,7 @@ import React, {
 } from "react";
 import * as Speech from "expo-speech";
 import * as Haptics from "expo-haptics";
-import { EmergencyType, getInstructions } from "@/constants/medical-instructions";
+import { EmergencyType } from "@/constants/medical-instructions";
 
 export interface VitalSigns {
   heartRate: number;

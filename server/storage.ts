@@ -78,7 +78,7 @@ export class MemStorage implements IStorage {
     const newDetection: Detection = {
       ...detection,
       id,
-      timestamp: new Date(),
+      timestamp: new Date().toISOString() as any,
     };
     this.detectionsData.unshift(newDetection);
     if (this.detectionsData.length > 50) this.detectionsData.pop();
