@@ -73,27 +73,27 @@ export function EarlyRiskDetection() {
           size={15}
           color={COLORS.accent}
         />
-        <Text style={styles.headerTitle}>EARLY RISK DETECTION</Text>
+        <Text style={styles.headerTitle}>الكشف المبكر عن المخاطر</Text>
       </View>
 
       <View style={styles.riskList}>
-        <RiskRow label="Heart Risk" level={heartRisk} isLast={false} />
-        <RiskRow label="Diabetes Risk" level={diabetesRisk} isLast={false} />
-        <RiskRow label="Stroke Risk" level={strokeRisk} isLast={true} />
+        <RiskRow label="مخاطر القلب" level={heartRisk} isLast={false} />
+        <RiskRow label="مخاطر السكري" level={diabetesRisk} isLast={false} />
+        <RiskRow label="مخاطر السكتة الدماغية" level={strokeRisk} isLast={true} />
       </View>
 
       <View style={styles.legend}>
         <View style={styles.legendRow}>
           <View style={[styles.legendDot, { backgroundColor: COLORS.statusGreen }]} />
-          <Text style={styles.legendText}>Low Risk</Text>
+          <Text style={styles.legendText}>خطر منخفض</Text>
         </View>
         <View style={styles.legendRow}>
           <View style={[styles.legendDot, { backgroundColor: COLORS.statusYellow }]} />
-          <Text style={styles.legendText}>Medium Risk</Text>
+          <Text style={styles.legendText}>خطر متوسط</Text>
         </View>
         <View style={styles.legendRow}>
           <View style={[styles.legendDot, { backgroundColor: COLORS.statusRed }]} />
-          <Text style={styles.legendText}>High Risk</Text>
+          <Text style={styles.legendText}>خطر مرتفع</Text>
         </View>
       </View>
     </View>
