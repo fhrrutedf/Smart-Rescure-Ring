@@ -52,17 +52,18 @@ async function speakAIResult(detections: any[]) {
   let message = "";
   
   if (className === "NONE") {
-    // هذه حالة توجيه المستخدم لتحسين جودة الصورة
     message = d.description || "لم أتمكن من رؤية الإصابة بوضوح، حاول تقريب الكاميرا.";
   } else {
-    // حالة اكتشاف إصابة حقيقية
+    // استخدم الوصف الدقيق للإصابة
     message = `تنبيه طبي: تم رصد ${d.description || className}.`;
+    
+    // أضف التعليمات خطوة بخطوة ليكون الصوت مطابقاً لما هو مكتوب على الشاشة
     if (d.instructions && d.instructions.length > 0) {
-      message += ` اتبع التعليمات التالية فوراً: ${d.instructions.join(". ")}`;
+      message += ` اتبع التعليمات التالية بدقة: ${d.instructions.map((ins: string, i: number) => `الخطوة ${i+1}: ${ins}`).join(". ")}`;
     }
   }
 
-  console.log(`[TTS] Speaking: ${message}`);
+  console.log(`[TTS] Speaking detailed instructions: ${message}`);
   await speak(message);
 }
 
