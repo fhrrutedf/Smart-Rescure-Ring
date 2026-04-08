@@ -159,21 +159,30 @@ function useVisionEngine(aiRunning: boolean, cameraRef: React.RefObject<any>): D
       try {
         isAnalyzing.current = true;
 
-    const photo = await cameraRef.current.takePictureAsync({
-      base64: true,
-      quality: 0.8,
-      skipProcessing: false,
-      exif: false,
-    });
+        // التقاط الصورة بجودة متوسطة لسرعة الرفع والتحليل
+        const photo = await cameraRef.current.takePictureAsync({
+          base64: true,
+          quality: 0.5,         // تقليل الجودة قليلاً لسرعة النقل
+          skipProcessing: true, // سرعة في الالتقاط
+          exif: false,
+        });
 
-    if (!photo?.base64) return;
+        if (!photo?.base64) return;
 
-    console.log(`[AI] Image captured (${Math.round(photo.base64.length / 1024)} KB). Sending to ${API_URL}...`);
+        console.log(`[AI] Image captured (${Math.round(photo.base64.length / 1024)} KB). Sending to ${API_URL}...`);
+        
+        // استخدام AbortController لإلغاء الطلبات المتأخرة
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 8000); 
+
         const response = await fetch(`${API_URL}/api/analyze`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ imageData: `data:image/jpeg;base64,${photo.base64}` }),
+          signal: controller.signal,
         });
+
+        clearTimeout(timeoutId);
 
         if (!response.ok) throw new Error(`HTTP ${response.status}`);
 
@@ -182,14 +191,13 @@ function useVisionEngine(aiRunning: boolean, cameraRef: React.RefObject<any>): D
         const now = Date.now();
 
         if (rawDetections.length > 0) {
-          console.log(`[AI] Detection Result:`, JSON.stringify(rawDetections));
+          console.log(`[AI] Result received:`, JSON.stringify(rawDetections));
         }
 
         // Track which classes were found this frame
         const foundClasses = new Set<string>();
 
         const newDetections = rawDetections
-          .filter((d) => d.confidence >= MIN_CONFIDENCE)
           .map((d) => {
             const cls = (d.class || "INJURY") as DetectionClass;
             foundClasses.add(cls);
@@ -198,20 +206,20 @@ function useVisionEngine(aiRunning: boolean, cameraRef: React.RefObject<any>): D
             const prev = confirmCount.current.get(cls) || 0;
             confirmCount.current.set(cls, prev + 1);
 
-            // Use AI-provided bbox if valid, otherwise use smart defaults
+            // استخدام إحداثيات الـ AI الدقيقة إذا وجدت، وإلا استخدام الإحداثيات الذكية
             const hasBbox =
               typeof d.bbox_x === "number" &&
               typeof d.bbox_y === "number" &&
               typeof d.bbox_w === "number" &&
               typeof d.bbox_h === "number" &&
-              d.bbox_w > 5 && d.bbox_h > 5;
+              d.bbox_w > 2 && d.bbox_h > 2;
 
             const bbox = hasBbox
               ? { x: d.bbox_x, y: d.bbox_y, w: d.bbox_w, h: d.bbox_h }
               : getSmartBbox(cls);
 
             return {
-              id: cls, // Use class as stable ID for smooth animation
+              id: cls, 
               cls,
               confidence: d.confidence,
               severity: d.severity,
@@ -222,9 +230,7 @@ function useVisionEngine(aiRunning: boolean, cameraRef: React.RefObject<any>): D
             } as Detection;
           })
           .filter((d) => {
-            // Confirmation logic: 
-            // - Normal cases need 2 consecutive frames
-            // - Higher confidence might need only 1
+            // إظهار النتيجة فوراً من أول لقطة مؤكدة
             return (confirmCount.current.get(d.cls) || 0) >= 1; 
           });
 
