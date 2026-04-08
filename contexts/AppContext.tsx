@@ -8,9 +8,9 @@ import React, {
   ReactNode,
   useCallback,
 } from "react";
-import * as Speech from "expo-speech";
 import * as Haptics from "expo-haptics";
 import { EmergencyType } from "@/constants/medical-instructions";
+import { speak } from "@/lib/tts";
 
 export interface VitalSigns {
   heartRate: number;
@@ -22,6 +22,58 @@ export interface VitalSigns {
 
 export type VisionAlert = "none" | "fall" | "bleeding" | "motionless";
 
+export enum HealthStatus {
+  STABLE = "Stable",
+  PRE_SYNCOPE = "Fainting Risk",
+  SHOCK_WARNING = "Shock Risk",
+  CRITICAL = "Critical"
+}
+
+interface VitalsHistory {
+  heartRate: number;
+  spo2: number;
+  timestamp: number;
+}
+
+export function calculatePredictiveRisk(
+  history: VitalsHistory[], 
+  currentVitals: VitalSigns,
+  visionAlert: VisionAlert
+): { status: HealthStatus; score: number } {
+  if (history.length < 5) return { status: HealthStatus.STABLE, score: 100 };
+
+  const current = currentVitals;
+  const previous = history[history.length - 5]; // مقارنة ببيانات قبل 5 ثواني
+  
+  const hrDelta = current.heartRate - previous.heartRate;
+  const spo2Delta = current.spo2 - previous.spo2;
+
+  let riskScore = 100;
+
+  // 1. منطق التنبؤ بالصدمة (Shock Prediction)
+  // ارتفاع النبض مع انخفاض الأكسجين بوجود نزيف
+  if (visionAlert === "bleeding") {
+    if (hrDelta > 10 && spo2Delta < -1) {
+      return { status: HealthStatus.SHOCK_WARNING, score: 60 };
+    }
+    if (current.heartRate > 120 && current.spo2 < 90) {
+      return { status: HealthStatus.CRITICAL, score: 30 };
+    }
+  }
+
+  // 2. منطق التنبؤ بالإغماء (Fainting/Syncope Prediction)
+  // انخفاض حاد ومفاجئ في النبض
+  if (hrDelta < -20 && Math.abs(spo2Delta) <= 1) {
+    return { status: HealthStatus.PRE_SYNCOPE, score: 50 };
+  }
+
+  // 3. حساب درجة الاستقرار العامة
+  if (current.heartRate > 100) riskScore -= 10;
+  if (current.spo2 < 95) riskScore -= 20;
+  
+  return { status: HealthStatus.STABLE, score: Math.max(0, riskScore) };
+}
+
 export interface AppState {
   vitals: VitalSigns;
   visionAlert: VisionAlert;
@@ -29,10 +81,13 @@ export interface AppState {
   emergencyStatus: "normal" | "warning" | "emergency";
   cameraReady: boolean;
   aiRunning: boolean;
+  latestDetections: any[]; // مصفوفة لتخزين آخر كشوفات الـ AI
+  healthScore: number;
 }
 
 interface AppContextValue extends AppState {
   setCameraReady: (ready: boolean) => void;
+  setLatestDetections: (detections: any[]) => void;
 }
 
 const AppContext = createContext<AppContextValue | null>(null);
@@ -145,10 +200,7 @@ function generateVitals(
 }
 
 function generateVisionAlert(): VisionAlert {
-  const rand = Math.random();
-  if (rand > 0.94) return "fall";
-  if (rand > 0.96) return "bleeding";
-  if (rand > 0.97) return "motionless";
+  // تم تعطيل التوليد العشوائي لجعل النتائج تعتمد فقط على الكاميرا والذكاء الاصطناعي
   return "none";
 }
 
@@ -172,24 +224,20 @@ async function playAlertHaptic(type: "warning" | "emergency") {
 
 function speakDiagnosis(diagnosis: EmergencyType, status: "warning" | "emergency") {
   if (diagnosis === "none") return;
-  
+
   const urgency = status === "emergency" ? "حالة طارئة" : "تحذير";
   const messages: Record<EmergencyType, string> = {
     bleeding: `${urgency}. كشف نزيف. قم بالضغط على الجرح فوراً.`,
     cardiac: `${urgency}. عدم انتظام ضربات القلب. تحقق من النبض.`,
     fall: `${urgency}. كشف سقوط. تحقق من الإصابات الرأسية.`,
-    burn: `${urgency}. كشف حروق. ابدأ بتبريد المنطقة.`,
     critical: `${urgency}. حالة حرجة. اتصل بالإسعاف فوراً.`,
     none: "",
   };
-  
+
   const message = messages[diagnosis];
   if (message) {
-    Speech.speak(message, { 
-      language: "ar-SA", 
-      pitch: status === "emergency" ? 1.2 : 1.0,
-      rate: status === "emergency" ? 1.1 : 0.9,
-    });
+    // ElevenLabs أولاً عبر lib/tts.ts
+    speak(message);
   }
 }
 
@@ -208,6 +256,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [emergencyStatus, setEmergencyStatus] = useState<AppState["emergencyStatus"]>("normal");
   const [cameraReady, setCameraReady] = useState(false);
   const [aiRunning, setAiRunning] = useState(false);
+  const [latestDetections, setLatestDetections] = useState<any[]>([]);
+  const [healthScore, setHealthScore] = useState(100);
+  const vitalsHistoryRef = useRef<VitalsHistory[]>([]);
 
   const scenarioRef = useRef<"normal" | "spike">("normal");
   const scenarioTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -252,18 +303,41 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const { diagnosis: newDx, status } = fuseDiagnosis(vitals, visionAlert);
     setDiagnosis(newDx);
     setEmergencyStatus(status);
+
+    // تحديث تاريخ العلامات الحيوية
+    vitalsHistoryRef.current.push({
+      heartRate: vitals.heartRate,
+      spo2: vitals.spo2,
+      timestamp: Date.now()
+    });
+    if (vitalsHistoryRef.current.length > 60) vitalsHistoryRef.current.shift();
+
+    // حساب درجة الاستقرار التنبؤية
+    const risk = calculatePredictiveRisk(vitalsHistoryRef.current, vitals, visionAlert);
+    setHealthScore(risk.score);
+    
+    // إذا كان هناك خطر تنبؤي، نرفع مستوى الطوارئ
+    if (risk.status !== HealthStatus.STABLE && status === "normal") {
+      setEmergencyStatus("warning");
+    }
   }, [vitals, visionAlert]);
 
-  // Audio alerts when emergency status changes - REMOVED: only speak on real photo analysis
-  // useEffect(() => {
-  //   if (emergencyStatus === "warning") {
-  //     playAlertHaptic("warning");
-  //     speakDiagnosis(diagnosis, "warning");
-  //   } else if (emergencyStatus === "emergency") {
-  //     playAlertHaptic("emergency");
-  //     speakDiagnosis(diagnosis, "emergency");
-  //   }
-  // }, [emergencyStatus, diagnosis]);
+  // نظام الإنذار الصوتي عند تغيير حالة الطوارئ
+  // فعّلناه مجدداً مع دعم Web Speech API للويب/لابتوب
+  const prevStatusRef = useRef<AppState["emergencyStatus"]>("normal");
+  useEffect(() => {
+    // تجنب تكرار الإنذار إذا لم تتغير الحالة
+    if (prevStatusRef.current === emergencyStatus) return;
+    prevStatusRef.current = emergencyStatus;
+
+    if (emergencyStatus === "warning") {
+      playAlertHaptic("warning");
+      speakDiagnosis(diagnosis, "warning");
+    } else if (emergencyStatus === "emergency") {
+      playAlertHaptic("emergency");
+      speakDiagnosis(diagnosis, "emergency");
+    }
+  }, [emergencyStatus, diagnosis]);
 
   const value = useMemo<AppContextValue>(
     () => ({
@@ -273,9 +347,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
       emergencyStatus,
       cameraReady,
       aiRunning,
+      latestDetections,
+      healthScore,
       setCameraReady,
+      setLatestDetections,
     }),
-    [vitals, visionAlert, diagnosis, emergencyStatus, cameraReady, aiRunning]
+    [vitals, visionAlert, diagnosis, emergencyStatus, cameraReady, aiRunning, latestDetections, healthScore]
   );
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;

@@ -1,3 +1,6 @@
+import dotenv from "dotenv";
+dotenv.config();
+
 import express from "express";
 import type { Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
@@ -55,13 +58,14 @@ function setupCors(app: express.Application) {
 function setupBodyParsing(app: express.Application) {
   app.use(
     express.json({
+      limit: "50mb",
       verify: (req, _res, buf) => {
         req.rawBody = buf;
       },
     }),
   );
 
-  app.use(express.urlencoded({ extended: false }));
+  app.use(express.urlencoded({ extended: false, limit: "50mb" }));
 }
 
 function setupRequestLogging(app: express.Application) {
@@ -237,8 +241,10 @@ function setupErrorHandler(app: express.Application) {
   setupErrorHandler(app);
 
   const port = parseInt(process.env.PORT || "5000", 10);
-  const host = process.env.HOST || "127.0.0.1";
+  // Use 0.0.0.0 to accept connections from any network (WiFi, localhost, etc.)
+  const host = process.env.HOST || "0.0.0.0";
   server.listen(port, host, () => {
     log(`express server serving on http://${host}:${port}`);
+    log(`For mobile: http://192.168.0.13:${port}`);
   });
 })();

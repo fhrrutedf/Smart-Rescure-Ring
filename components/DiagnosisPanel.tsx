@@ -19,36 +19,36 @@ const DIAGNOSIS_CONFIG: Record<
 > = {
   none: {
     icon: "shield-check",
-    label: "No Emergency Detected",
-    desc: "All parameters within normal range",
+    label: "لا توجد حالة طارئة",
+    desc: "جميع المؤشرات ضمن النطاق الطبيعي",
     color: COLORS.statusGreen,
     bg: COLORS.statusGreenGlow,
   },
   fall: {
     icon: "human-handsdown",
-    label: "Possible Fall Detected",
-    desc: "Vision analysis detected a fallen person",
+    label: "احتمال سقوط شخص",
+    desc: "رصد تحليل الكاميرا حالة سقوط محتملة",
     color: COLORS.statusYellow,
     bg: COLORS.statusYellowGlow,
   },
   bleeding: {
     icon: "water-alert",
-    label: "Bleeding Detected",
-    desc: "Visual signs of bleeding identified",
+    label: "تم رصد نزيف",
+    desc: "تم تحديد علامات بصرية لوجود نزيف حاد",
     color: COLORS.statusRed,
     bg: COLORS.statusRedGlow,
   },
   cardiac: {
     icon: "heart-off",
-    label: "Cardiac Anomaly Detected",
-    desc: "Abnormal heart rate pattern detected",
+    label: "اضطراب في نبض القلب",
+    desc: "تم رصد نمط غير طبيعي لضربات القلب",
     color: COLORS.statusRed,
     bg: COLORS.statusRedGlow,
   },
   critical: {
     icon: "alert-octagon",
-    label: "Critical Emergency",
-    desc: "Multiple life-threatening indicators detected",
+    label: "حالة طارئة حرجة",
+    desc: "تم رصد مؤشرات متعددة تهدد الحياة",
     color: COLORS.statusRed,
     bg: COLORS.statusRedGlow,
   },
@@ -99,15 +99,26 @@ function DiagnosisIcon({
 }
 
 export function DiagnosisPanel() {
-  const { diagnosis, aiRunning } = useApp();
+  const { diagnosis, aiRunning, latestDetections, healthScore } = useApp();
+  
+  // تحقق من وجود كشف AI حقيقي
+  const hasAiDetection = latestDetections.length > 0 && latestDetections[0].class !== "NONE";
+  const aiInfo = hasAiDetection ? latestDetections[0] : null;
+
   const config = DIAGNOSIS_CONFIG[diagnosis];
-  const isCritical = diagnosis === "critical" || diagnosis === "cardiac" || diagnosis === "bleeding";
+  
+  // استخدام وصف الـ AI إذا وجد، وإلا الوصف الثابت
+  const displayLabel = aiInfo ? (aiInfo.class === "BLEEDING" ? "تم رصد نزيف حقيقي" : aiInfo.class) : config.label;
+  const displayDesc = aiInfo?.description || config.desc;
+  const displaySeverity = aiInfo?.severity || (diagnosis === "none" ? "CLEAR" : "CRITICAL");
+  
+  const isCritical = diagnosis === "critical" || diagnosis === "cardiac" || diagnosis === "bleeding" || aiInfo?.severity === "critical";
   const slideIn = useSharedValue(0);
 
   useEffect(() => {
     slideIn.value = 0;
     slideIn.value = withTiming(1, { duration: 350, easing: Easing.out(Easing.cubic) });
-  }, [diagnosis, slideIn]);
+  }, [diagnosis, aiInfo?.description, slideIn]);
 
   const contentStyle = useAnimatedStyle(() => ({
     opacity: slideIn.value,
@@ -118,10 +129,10 @@ export function DiagnosisPanel() {
     <View style={styles.container}>
       <View style={styles.header}>
         <MaterialCommunityIcons name="brain" size={15} color={COLORS.accent} />
-        <Text style={styles.headerTitle}>AI DIAGNOSIS ENGINE v4.2</Text>
+        <Text style={styles.headerTitle}>محرك التشخيص الذكي v4.2</Text>
         {aiRunning && (
           <View style={styles.runningBadge}>
-            <Text style={styles.runningText}>FUSING</Text>
+            <Text style={styles.runningText}>تحليل مباشر</Text>
           </View>
         )}
       </View>
@@ -129,14 +140,23 @@ export function DiagnosisPanel() {
       <Animated.View style={[styles.content, contentStyle]}>
         <DiagnosisIcon icon={config.icon} color={config.color} isCritical={isCritical} />
         <View style={styles.textBlock}>
-          <Text style={[styles.diagnosisLabel, { color: config.color }]}>
-            {config.label}
-          </Text>
-          <Text style={styles.diagnosisDesc}>{config.desc}</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+            <Text style={[styles.diagnosisLabel, { color: config.color }]}>
+              {displayLabel}
+            </Text>
+            <View style={[styles.scoreBadge, { backgroundColor: healthScore > 70 ? COLORS.statusGreenGlow : COLORS.statusRedGlow }]}>
+              <Text style={[styles.scoreText, { color: healthScore > 70 ? COLORS.statusGreen : COLORS.statusRed }]}>
+                {healthScore}% استقرار
+              </Text>
+            </View>
+          </View>
+          <Text style={styles.diagnosisDesc}>{displayDesc}</Text>
         </View>
         <View style={[styles.severityTag, { backgroundColor: config.bg, borderColor: config.color }]}>
           <Text style={[styles.severityText, { color: config.color }]}>
-            {diagnosis === "none" ? "CLEAR" : isCritical ? "CRITICAL" : "ALERT"}
+            {String(displaySeverity).toUpperCase() === "CLEAR" ? "سليم" : 
+             String(displaySeverity).toUpperCase() === "CRITICAL" ? "خطير" : 
+             String(displaySeverity).toUpperCase() === "HIGH" ? "مرتفع" : "تنبيه"}
           </Text>
         </View>
       </Animated.View>
@@ -219,6 +239,18 @@ const styles = StyleSheet.create({
     fontSize: 9,
     fontWeight: "800",
     letterSpacing: 1.2,
+    fontFamily: "Inter_700Bold",
+  },
+  scoreBadge: {
+    paddingHorizontal: 6,
+    paddingVertical: 1,
+    borderRadius: 4,
+    borderWidth: 0.5,
+    borderColor: 'rgba(255,255,255,0.1)',
+  },
+  scoreText: {
+    fontSize: 8,
+    fontWeight: "700",
     fontFamily: "Inter_700Bold",
   },
 });

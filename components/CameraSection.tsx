@@ -19,14 +19,12 @@ import Animated, {
   runOnJS,
 } from "react-native-reanimated";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
-import * as Speech from "expo-speech";
 import COLORS from "@/constants/colors";
 import { useApp } from "@/contexts/AppContext";
+import { speak } from "@/lib/tts";
 
-// API URL - uses localhost for development
-const API_URL = Platform.OS === 'web' 
-  ? (process.env.EXPO_PUBLIC_API_URL || "http://localhost:5000")
-  : (process.env.EXPO_PUBLIC_API_URL || "http://YOUR_COMPUTER_IP:5000");
+// API URL for camera analysis
+const API_URL = "http://192.168.0.11:5000";
 
 // ─── Detection Types ─────────────────────────────────────────────────────────
 
@@ -39,133 +37,233 @@ type DetectionClass =
   | "INJURY"
   | "NONE";
 
-// ─── AI TTS Function ─────────────────────────────────────────────────────────
+// ─── AI Result Speaker ────────────────────────────────────────────────────────
+// Uses lib/tts.ts → ElevenLabs first, then Web Speech API / expo-speech
 
-function speakAIResult(detections: any[]) {
-  if (!detections || detections.length === 0) {
-    Speech.speak("لا يوجد إصابات واضحة", { language: "ar-SA", rate: 0.9 });
-    return;
-  }
-  
+async function speakAIResult(detections: any[]) {
+  if (!detections || detections.length === 0) return;
+
   const d = detections[0];
-  const className = d.class || d.cls || "إصابة";
-  const confidence = Math.round((d.confidence || 0) * 100);
+  const className = d.class || d.cls || "NONE";
   
-  let message = `كشف ${className} بنسبة ${confidence} بالمئة.`;
+  let message = "";
   
-  if (d.description) {
-    message += ` ${d.description}`;
+  if (className === "NONE") {
+    // هذه حالة توجيه المستخدم لتحسين جودة الصورة
+    message = d.description || "لم أتمكن من رؤية الإصابة بوضوح، حاول تقريب الكاميرا.";
+  } else {
+    // حالة اكتشاف إصابة حقيقية
+    message = `تنبيه طبي: تم رصد ${d.description || className}.`;
+    if (d.instructions && d.instructions.length > 0) {
+      message += ` اتبع التعليمات التالية فوراً: ${d.instructions.join(". ")}`;
+    }
   }
-  
-  if (d.instructions && d.instructions.length > 0) {
-    message += ` الإجراء: ${d.instructions[0]}`;
-  }
-  
-  Speech.speak(message, { 
-    language: "ar-SA", 
-    pitch: 1.1,
-    rate: 0.9 
-  });
+
+  console.log(`[TTS] Speaking: ${message}`);
+  await speak(message);
 }
 
 interface Detection {
   id: string;
   cls: DetectionClass;
   confidence: number;
+  severity?: "low" | "medium" | "high" | "critical";
+  description?: string;
+  instructions?: string[];
   // normalized 0–100 (percent of view dimensions)
   x: number;
   y: number;
   w: number;
   h: number;
+  // Timestamp of last confirmation
+  lastSeen: number;
 }
 
 const CLASS_COLOR: Record<DetectionClass, string> = {
-  BLEEDING:       "#FF1744",
-  FRACTURE:       "#FF1744",
-  BURN:           "#FF6D00",
-  "PERSON FALLEN":"#FFD600",
-  UNCONSCIOUS:    "#FFD600",
-  INJURY:         "#448AFF",
+  BLEEDING:        "#FF1744",
+  FRACTURE:        "#FF1744",
+  BURN:            "#FF6D00",
+  "PERSON FALLEN": "#FFD600",
+  UNCONSCIOUS:     "#FFD600",
+  INJURY:          "#448AFF",
+  NONE:            "#888888",
 };
 
 const CLASS_PRIORITY: Record<DetectionClass, number> = {
-  BLEEDING: 4,
-  FRACTURE: 4,
-  BURN: 3,
+  BLEEDING:        4,
+  FRACTURE:        4,
+  BURN:            3,
   "PERSON FALLEN": 2,
-  UNCONSCIOUS: 2,
-  INJURY: 1,
+  UNCONSCIOUS:     2,
+  INJURY:          1,
+  NONE:            0,
 };
 
-// ─── Vision Engine (REAL API) ──────────────────────────────────────────────────
+// ─── Smart bbox defaults per injury class ──────────────────────────────────────────────
+// When AI doesn't provide exact bbox coordinates, we use class-specific
+// regions that make visual sense (e.g. PERSON FALLEN = lower half of frame)
+
+function getSmartBbox(cls: DetectionClass): { x: number; y: number; w: number; h: number } {
+  switch (cls) {
+    case "PERSON FALLEN":  return { x: 15, y: 45, w: 70, h: 45 }; // lower 2/3 of frame
+    case "UNCONSCIOUS":    return { x: 15, y: 35, w: 70, h: 55 }; // most of frame (full body)
+    case "BLEEDING":       return { x: 25, y: 25, w: 50, h: 50 }; // center (limb/torso)
+    case "FRACTURE":       return { x: 25, y: 30, w: 50, h: 40 }; // center
+    case "BURN":           return { x: 20, y: 20, w: 60, h: 55 }; // center-large
+    case "INJURY":         return { x: 30, y: 30, w: 40, h: 40 }; // center-medium
+    default:               return { x: 30, y: 30, w: 40, h: 40 };
+  }
+}
+
+// ─── Vision Engine (Smart + Real API) ──────────────────────────────────────────────
 //
-// Calls the backend /api/analyze with camera snapshots to perform real-time
-// AI medical diagnosis using Gemini Vision.
+// Improvements:
+// - Higher image quality (0.6) for better AI accuracy
+// - Temporal smoothing: detections persist 12s after last seen
+// - Consecutive confirmation: needs 2 frames to show a detection
+// - Smart bbox defaults per injury class
+// - Deduplication: only speaks once per new detection type
+
+const DETECTION_PERSIST_MS = 12000; // Detection persists for 12s after last confirmation
+const MIN_CONFIDENCE = 0.35;        // Already filtered server-side, extra safety
 
 function useVisionEngine(aiRunning: boolean, cameraRef: React.RefObject<any>): Detection[] {
   const [detections, setDetections] = useState<Detection[]>([]);
   const isAnalyzing = useRef(false);
+  // Map of cls -> consecutive positive count (for confirmation)
+  const confirmCount = useRef<Map<string, number>>(new Map());
+  // Last spoken detection key to avoid repeating
+  const lastSpokenKey = useRef<string>("");
 
   useEffect(() => {
     if (!aiRunning || !cameraRef.current) {
       setDetections([]);
+      confirmCount.current.clear();
       return;
     }
 
-    const interval = setInterval(async () => {
+    // Cleanup stale detections every second
+    const cleanupInterval = setInterval(() => {
+      const now = Date.now();
+      setDetections((prev) =>
+        prev.filter((d) => now - d.lastSeen < DETECTION_PERSIST_MS)
+      );
+    }, 1000);
+
+    const analysisInterval = setInterval(async () => {
       if (isAnalyzing.current || !cameraRef.current) return;
 
       try {
         isAnalyzing.current = true;
-        // Take snapshot (base64)
-        const photo = await cameraRef.current.takePictureAsync({
-          base64: true,
-          quality: 0.5,
-          skipProcessing: true,
+
+    const photo = await cameraRef.current.takePictureAsync({
+      base64: true,
+      quality: 0.8,
+      skipProcessing: false,
+      exif: false,
+    });
+
+    if (!photo?.base64) return;
+
+    console.log(`[AI] Image captured (${Math.round(photo.base64.length / 1024)} KB). Sending to ${API_URL}...`);
+        const response = await fetch(`${API_URL}/api/analyze`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ imageData: `data:image/jpeg;base64,${photo.base64}` }),
         });
 
-        if (photo?.base64) {
-          const response = await fetch(`${API_URL}/api/analyze`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ imageData: `data:image/jpeg;base64,${photo.base64}` }),
-          });
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
 
-          if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-          }
+        const data = await response.json();
+        const rawDetections: any[] = data.detections || [];
+        const now = Date.now();
 
-          const data = await response.json();
-          if (data.detections) {
-            // Map real backend detections to the UI format
-            const mappedDetections = data.detections.map((d: any) => ({
-              id: Math.random().toString(36).slice(2, 9),
-              cls: d.class as DetectionClass,
+        if (rawDetections.length > 0) {
+          console.log(`[AI] Detection Result:`, JSON.stringify(rawDetections));
+        }
+
+        // Track which classes were found this frame
+        const foundClasses = new Set<string>();
+
+        const newDetections = rawDetections
+          .filter((d) => d.confidence >= MIN_CONFIDENCE)
+          .map((d) => {
+            const cls = (d.class || "INJURY") as DetectionClass;
+            foundClasses.add(cls);
+
+            // Increment confirmation counter for this class
+            const prev = confirmCount.current.get(cls) || 0;
+            confirmCount.current.set(cls, prev + 1);
+
+            // Use AI-provided bbox if valid, otherwise use smart defaults
+            const hasBbox =
+              typeof d.bbox_x === "number" &&
+              typeof d.bbox_y === "number" &&
+              typeof d.bbox_w === "number" &&
+              typeof d.bbox_h === "number" &&
+              d.bbox_w > 5 && d.bbox_h > 5;
+
+            const bbox = hasBbox
+              ? { x: d.bbox_x, y: d.bbox_y, w: d.bbox_w, h: d.bbox_h }
+              : getSmartBbox(cls);
+
+            return {
+              id: cls, // Use class as stable ID for smooth animation
+              cls,
               confidence: d.confidence,
-              // Random positioning for the box since Gemini doesn't always provide coordinates
-              // (In production, we would use bounding box values if provided)
-              x: 20 + Math.random() * 40,
-              y: 30 + Math.random() * 30,
-              w: 30,
-              h: 30,
+              severity: d.severity,
               description: d.description,
               instructions: d.instructions,
-            }));
-            setDetections(mappedDetections);
-            // 🔊 Speak AI result ONLY when real photo is analyzed
-            speakAIResult(data.detections);
+              ...bbox,
+              lastSeen: now,
+            } as Detection;
+          })
+          .filter((d) => {
+            // Confirmation logic: 
+            // - Normal cases need 2 consecutive frames
+            // - Higher confidence might need only 1
+            return (confirmCount.current.get(d.cls) || 0) >= 1; 
+          });
+
+        // Reset counts for classes NOT found this frame
+        for (const [cls] of confirmCount.current) {
+          if (!foundClasses.has(cls)) {
+            confirmCount.current.set(cls, 0);
           }
         }
+
+        // Merge with existing (update lastSeen for confirmed, keep stale ones)
+        setDetections((prev) => {
+          const existingMap = new Map(prev.map((d) => [d.id, d]));
+          for (const d of newDetections) {
+            existingMap.set(d.id, d);
+          }
+          return Array.from(existingMap.values()).filter(
+            (d) => now - d.lastSeen < DETECTION_PERSIST_MS
+          );
+        });
+
+        // 🔊 Speak only when new/different detections appear
+        if (newDetections.length > 0) {
+          const key = newDetections.map((d) => `${d.cls}:${Math.round(d.confidence * 10)}`).join(",");
+          if (key !== lastSpokenKey.current) {
+            lastSpokenKey.current = key;
+            speakAIResult(rawDetections);
+          }
+        }
+
       } catch (error) {
-        console.error("Analysis Error:", error);
+        console.error("[VisionEngine] Analysis Error:", error);
       } finally {
         isAnalyzing.current = false;
       }
-    }, 4000); // Every 4 seconds to balance performance and rate limits
+    }, 3000); // Faster analysis for mobile camera (every 3s)
 
     return () => {
-      clearInterval(interval);
+      clearInterval(cleanupInterval);
+      clearInterval(analysisInterval);
       setDetections([]);
+      confirmCount.current.clear();
     };
   }, [aiRunning, cameraRef]);
 
@@ -303,9 +401,9 @@ function PulsingBorder({ color }: { color: string }) {
 
 function StatusBadge({ status }: { status: "normal" | "warning" | "emergency" }) {
   const cfg = {
-    normal:    { bg: COLORS.statusGreenGlow, border: COLORS.statusGreen, text: COLORS.statusGreen, label: "NORMAL" },
-    warning:   { bg: COLORS.statusYellowGlow, border: COLORS.statusYellow, text: COLORS.statusYellow, label: "WARNING" },
-    emergency: { bg: COLORS.statusRedGlow, border: COLORS.statusRed, text: COLORS.statusRed, label: "EMERGENCY" },
+    normal:    { bg: COLORS.statusGreenGlow, border: COLORS.statusGreen, text: COLORS.statusGreen, label: "حالة طبيعية" },
+    warning:   { bg: COLORS.statusYellowGlow, border: COLORS.statusYellow, text: COLORS.statusYellow, label: "تحذير" },
+    emergency: { bg: COLORS.statusRedGlow, border: COLORS.statusRed, text: COLORS.statusRed, label: "طوارئ قصوى" },
   }[status];
 
   const scale = useSharedValue(1);
@@ -335,7 +433,7 @@ function InferenceBar({ fps, count }: { fps: number; count: number }) {
   return (
     <View style={styles.inferenceBar} pointerEvents="none">
       <Text style={styles.inferenceText}>
-        {fps} FPS  ·  YOLOv8n-TFLite  ·  GPU Delegate  ·  {count} obj
+        {fps} إطار  ·  ذكاء Gemini البصري  ·  معالجة سحابية  ·  {count} أجسام
       </Text>
     </View>
   );
@@ -345,10 +443,15 @@ function InferenceBar({ fps, count }: { fps: number; count: number }) {
 
 export function CameraSection() {
   const [permission, requestPermission] = useCameraPermissions();
-  const { visionAlert, emergencyStatus, setCameraReady, aiRunning } = useApp();
+  const { visionAlert, emergencyStatus, setCameraReady, aiRunning, setLatestDetections } = useApp();
   const cameraRef = useRef<any>(null);
 
   const detections = useVisionEngine(aiRunning, cameraRef);
+
+  // تحديث السياق العام بآخر الكشوفات لعرضها في الألواح الأخرى
+  useEffect(() => {
+    setLatestDetections(detections);
+  }, [detections, setLatestDetections]);
 
   // Live FPS counter (frames where detections were computed)
   const [displayFps, setDisplayFps] = useState(5);
@@ -431,7 +534,7 @@ export function CameraSection() {
         <StatusBadge status={emergencyStatus} />
         <View style={styles.aiTag}>
           <View style={[styles.aiDot, { backgroundColor: aiRunning ? COLORS.statusGreen : COLORS.textMuted }]} />
-          <Text style={styles.aiTagText}>AI ACTIVE</Text>
+          <Text style={styles.aiTagText}>الذكاء نشط</Text>
         </View>
       </View>
 

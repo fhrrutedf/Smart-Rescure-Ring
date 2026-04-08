@@ -100,7 +100,7 @@ function ConnectionBadge({ connected }: { connected: boolean }) {
           { color: connected ? COLORS.statusGreen : COLORS.statusRed },
         ]}
       >
-        {connected ? "Ring Connected" : "Ring Disconnected"}
+        {connected ? "الخاتم متصل" : "الخاتم غير متصل"}
       </Text>
     </View>
   );
@@ -114,12 +114,22 @@ export function VitalsPanel() {
   const tempAlert = vitals.temperature > 39;
   const motionAlert = vitals.motionStatus === "Sudden Movement";
 
+  // ترجمة حالة الحركة
+  const getMotionLabel = (status: string) => {
+    switch (status) {
+      case "Still": return "مستقر";
+      case "Moving": return "يتحرك";
+      case "Sudden Movement": return "حركة مفاجئة";
+      default: return status;
+    }
+  };
+
   return (
     <View style={styles.container}>
       <View style={styles.header}>
         <View style={styles.headerLeft}>
           <MaterialCommunityIcons name="heart-pulse" size={15} color={COLORS.accent} />
-          <Text style={styles.headerTitle}>VITAL SIGNS</Text>
+          <Text style={styles.headerTitle}>العلامات الحيوية</Text>
         </View>
         <ConnectionBadge connected={vitals.ringConnected} />
       </View>
@@ -128,7 +138,7 @@ export function VitalsPanel() {
         <VitalCard
           icon="heart-pulse"
           iconLibrary="mci"
-          label="Heart Rate"
+          label="نبض القلب"
           value={String(vitals.heartRate)}
           unit="BPM"
           isAlert={hrAlert}
@@ -137,7 +147,7 @@ export function VitalsPanel() {
         <VitalCard
           icon="water-percent"
           iconLibrary="mci"
-          label="SpO2"
+          label="الأكسجين"
           value={String(vitals.spo2)}
           unit="%"
           isAlert={spo2Alert}
@@ -146,7 +156,7 @@ export function VitalsPanel() {
         <VitalCard
           icon="thermometer"
           iconLibrary="mci"
-          label="Temperature"
+          label="الحرارة"
           value={String(vitals.temperature)}
           unit="°C"
           isAlert={tempAlert}
@@ -155,8 +165,8 @@ export function VitalsPanel() {
         <VitalCard
           icon="motion-sensor"
           iconLibrary="mci"
-          label="Motion"
-          value={vitals.motionStatus}
+          label="الحركة"
+          value={getMotionLabel(vitals.motionStatus)}
           unit=""
           isAlert={motionAlert}
           isConnected={vitals.ringConnected}

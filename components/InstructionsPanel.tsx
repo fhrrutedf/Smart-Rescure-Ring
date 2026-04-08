@@ -50,14 +50,27 @@ function InstructionStep({ step, index, color }: { step: string; index: number; 
 }
 
 export function InstructionsPanel() {
-  const { diagnosis } = useApp();
+  const { diagnosis, latestDetections } = useApp();
+  
+  // إذا كان هناك كشف حقيقي من الـ AI، نستخدم بياناته، وإلا نستخدم البيانات الثابتة
+  const hasAiDetection = latestDetections.length > 0 && latestDetections[0].class !== "NONE";
+  const aiInfo = hasAiDetection ? latestDetections[0] : null;
+
   const instruction = MEDICAL_INSTRUCTIONS[diagnosis];
-  const color = PRIORITY_COLORS[instruction.priority];
-  const prevDiagnosis = useRef<EmergencyType>(diagnosis);
+  
+  // تخصيص الخطوات بناءً على الـ AI
+  const displaySteps = aiInfo?.instructions?.length > 0 
+    ? aiInfo.instructions 
+    : instruction.steps;
+    
+  const displayPriority = aiInfo?.severity || instruction.priority;
+  const color = PRIORITY_COLORS[displayPriority as keyof typeof PRIORITY_COLORS] || COLORS.textMuted;
+  
+  const prevDiagnosis = useRef<string>(diagnosis + (aiInfo?.class || ""));
   const keyRef = useRef(0);
 
-  if (prevDiagnosis.current !== diagnosis) {
-    prevDiagnosis.current = diagnosis;
+  if (prevDiagnosis.current !== (diagnosis + (aiInfo?.class || ""))) {
+    prevDiagnosis.current = (diagnosis + (aiInfo?.class || ""));
     keyRef.current += 1;
   }
 
@@ -65,16 +78,16 @@ export function InstructionsPanel() {
     <View style={styles.container}>
       <View style={styles.header}>
         <MaterialCommunityIcons name="medical-bag" size={15} color={COLORS.accent} />
-        <Text style={styles.headerTitle}>FIRST AID INSTRUCTIONS</Text>
+        <Text style={styles.headerTitle}>تعليمات الإسعاف الأولية</Text>
         <View style={styles.priorityBadge}>
           <Text style={[styles.priorityText, { color }]}>
-            {instruction.priority.toUpperCase()}
+            {String(displayPriority).toUpperCase()}
           </Text>
         </View>
       </View>
 
       <View style={styles.stepsContainer} key={keyRef.current}>
-        {instruction.steps.map((step, i) => (
+        {displaySteps.map((step: string, i: number) => (
           <InstructionStep key={i} step={step} index={i} color={color} />
         ))}
       </View>
