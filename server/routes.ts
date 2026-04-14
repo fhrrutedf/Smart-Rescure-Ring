@@ -2,9 +2,11 @@ import type { Express } from "express";
 import { createServer, type Server } from "node:http";
 import * as path from "path";
 import * as fs from "fs";
-import { analyzeImage } from "./gemini-service";
+import { analyzeImage, analyzeHealthAnomalies } from "./gemini-service";
 import { storage } from "./storage";
-import { generateSpeech } from "./elevenlabs-service";
+import { generateMicrosoftSpeech } from "./microsoft-tts-service";
+import { generateSpeech as generateElevenLabsSpeech } from "./elevenlabs-service";
+import { generateGoogleTTS } from "./google-tts-service";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Medical Analysis API
@@ -22,7 +24,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (results && results.length > 0) {
         await storage.saveDetection({
           detections: results,
-          imagePreview: imageData.substring(0, 500) + "..." // For tracking
+          imagePreview: imageData.substring(0, 500) + "..." 
         });
       }
 
@@ -33,25 +35,127 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // ElevenLabs TTS API
-  app.post("/api/tts", async (req, res) => {
+  // TTS API — Microsoft حامد السعودي primary, Google & ElevenLabs fallbacks
+  // Support both POST (for typical usage) and GET (for FileSystem.downloadAsync on mobile)
+  app.all("/api/tts", async (req, res) => {
     try {
-      const { text } = req.body;
-      if (!text) {
+      const text = req.body?.text || req.query?.text;
+      const lang = req.body?.lang || req.query?.lang;
+      
+      if (!text || typeof text !== 'string') {
         return res.status(400).json({ error: "Text is required" });
       }
 
-      const audioBuffer = await generateSpeech(text);
-      
+      let audioBuffer: Buffer | null = null;
+      let engine = "none";
+
+      // 1️⃣ Microsoft Edge TTS — صوت حامد السعودي (أفضل جودة عربية)
+      try {
+        audioBuffer = await generateMicrosoftSpeech(text);
+        if (audioBuffer) engine = "microsoft-hamed";
+      } catch (e) {
+        console.warn("[TTS] Microsoft حامد failed, trying Google...");
+      }
+
+      // 2️⃣ Google Translate TTS fallback (free, reliable)
       if (!audioBuffer) {
+        try {
+          audioBuffer = await generateGoogleTTS(text, lang || "ar");
+          if (audioBuffer) engine = "google";
+        } catch (e) {
+          console.warn("[TTS] Google TTS also failed, trying ElevenLabs...");
+        }
+      }
+
+      // 3️⃣ ElevenLabs fallback (may be blocked by Cloudflare)
+      if (!audioBuffer) {
+        try {
+          audioBuffer = await generateElevenLabsSpeech(text);
+          if (audioBuffer) engine = "elevenlabs";
+        } catch (e) {
+          console.warn("[TTS] ElevenLabs also failed.");
+        }
+      }
+
+      if (!audioBuffer) {
+        console.error("[TTS] All TTS engines failed.");
         return res.status(500).json({ error: "Failed to generate speech" });
       }
 
+      console.log(`[TTS] ✅ Audio delivered via ${engine} — ${audioBuffer.length} bytes`);
       res.setHeader("Content-Type", "audio/mpeg");
+      res.setHeader("X-TTS-Engine", engine);
       res.send(audioBuffer);
     } catch (error) {
       console.error("TTS Error:", error);
       res.status(500).json({ error: "Failed to generate speech" });
+    }
+  });
+
+  // Emergency SOS API
+  app.post("/api/emergency/sos", async (req, res) => {
+    try {
+      const { userId, location, type } = req.body;
+      console.log(`[SOS] Emergency triggered for ${userId} at ${JSON.stringify(location)}`);
+      
+      const message = `SOS: Emergency detected for ${userId}. Type: ${type}. Location: ${location.lat}, ${location.lng}`;
+      
+      await storage.saveDetection({
+        detections: [{
+          class: "SOS_ALERT",
+          confidence: 1.0,
+          description: `User triggered SOS: ${type}`,
+          instructions: ["Dispatch emergency services to location"]
+        }],
+        imagePreview: "SOS_LOCATION_ALERT"
+      });
+      
+      res.json({ success: true, message: "Emergency services notified" });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to trigger SOS" });
+    }
+  });
+
+  // Real-time Sensor Data Analysis (The Predictive Logic)
+  app.post("/api/sensors/analyze", async (req, res) => {
+    try {
+      const { heartRate, oxygen, temperature, movement, history } = req.body;
+      
+      const analysis = await analyzeHealthAnomalies({
+        current: { 
+          heartRate: Number(heartRate), 
+          oxygen: Number(oxygen), 
+          temperature: Number(temperature), 
+          movement: movement === "true" || movement === true 
+        },
+        history: history || []
+      });
+
+      if (analysis.riskScore > 0.7) {
+        const warningText = analysis.recommendation;
+        const audioBuffer = await generateMicrosoftSpeech(warningText);
+        
+        await storage.saveDetection({
+          detections: [{
+            class: "CRITICAL_ANOMALY",
+            confidence: analysis.riskScore,
+            description: analysis.condition || "Unknown Anomaly",
+            instructions: [analysis.recommendation]
+          }],
+          imagePreview: "SENSOR_DATA_ONLY"
+        });
+
+        return res.json({ 
+          status: "CRITICAL", 
+          analysis, 
+          audioBase64: audioBuffer?.toString('base64') 
+        });
+      }
+
+      res.json({ status: "NORMAL", analysis });
+    } catch (error) {
+      console.error("Sensor Analysis Error:", error);
+      res.status(500).json({ error: "Sensor analysis failed" });
     }
   });
 

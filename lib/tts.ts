@@ -1,29 +1,27 @@
-/**
- * lib/tts.ts
- * ─────────────────────────────────────────────────────────────────────────────
- * Unified Text-To-Speech — ElevenLabs first, fallback to device TTS.
- *
- * Mobile fix: expo-av's Audio.Sound on native needs a file URI, not a blob URL.
- *             We use expo-file-system to save audio → temp file → play.
- *
- * Priority:
- *   1. ElevenLabs  (/api/tts) — high quality, Arabic voice
- *   2. Web Speech API — web/browser fallback (free, built-in)
- *   3. expo-speech  — native device fallback
- */
-
 import { Platform } from "react-native";
 import * as Speech from "expo-speech";
-import * as FileSystem from "expo-file-system";
+import * as FileSystem from "expo-file-system/legacy";
 import { Audio } from "expo-av";
+import Constants from 'expo-constants';
 
-const API_URL =
-  Platform.OS === "web"
-    ? process.env.EXPO_PUBLIC_API_URL || "http://localhost:5000"
-    : process.env.EXPO_PUBLIC_API_URL || "http://192.168.0.11:5000";
+// Automatically get the correct host IP from Expo debugger or fallback
+const getApiUrl = () => {
+  if (Platform.OS === 'web') return "http://localhost:5000";
+  
+  // Try to get debugger host (the IP of your laptop)
+  const debuggerHost = Constants.expoConfig?.hostUri?.split(':').shift();
+  if (debuggerHost) return `http://${debuggerHost}:5000`;
+  
+  // Hard fallback to current laptop IP
+  return "http://192.168.0.11:5000"; 
+};
 
-// ─── Prevent audio overlap ───────────────────────────────────────────────────
+const API_URL = getApiUrl();
+
 let activeSound: Audio.Sound | null = null;
+
+// Prevent overlapping speech requests
+let isSpeaking = false;
 
 async function stopCurrentSound() {
   if (activeSound) {
@@ -35,69 +33,13 @@ async function stopCurrentSound() {
   }
 }
 
-// ─── Web Speech API fallback ─────────────────────────────────────────────────
-function speakWebFallback(text: string): boolean {
-  try {
-    if (typeof window === "undefined" || !window.speechSynthesis) return false;
-    window.speechSynthesis.cancel();
+async function playAudioNative(base64: string): Promise<void> {
+  const tempFile = `${FileSystem.cacheDirectory}tts_${Date.now()}.mp3`;
 
-    const utterance = new SpeechSynthesisUtterance(text);
-    utterance.lang = "ar-SA";
-    utterance.rate = 0.9;
-    utterance.pitch = 1.0;
-    utterance.volume = 1;
-
-    const voices = window.speechSynthesis.getVoices();
-    const arabicVoice = voices.find(
-      (v) => v.lang.startsWith("ar") || v.name.toLowerCase().includes("arabic")
-    );
-    if (arabicVoice) utterance.voice = arabicVoice;
-
-    window.speechSynthesis.speak(utterance);
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-// ─── Play audio on WEB (blob → object URL) ────────────────────────────────────
-async function playAudioWeb(audioBlob: Blob): Promise<void> {
-  const audioUri = URL.createObjectURL(audioBlob);
-  await stopCurrentSound();
-  const { sound } = await Audio.Sound.createAsync({ uri: audioUri });
-  activeSound = sound;
-  await sound.playAsync();
-  sound.setOnPlaybackStatusUpdate((status) => {
-    if (status.isLoaded && status.didJustFinish) {
-      sound.unloadAsync();
-      URL.revokeObjectURL(audioUri);
-      activeSound = null;
-    }
-  });
-}
-
-// ─── Play audio on NATIVE (base64 → temp file → play) ─────────────────────────
-// URL.createObjectURL does NOT work on React Native — must use FileSystem
-async function playAudioNative(audioBuffer: ArrayBuffer): Promise<void> {
-  const tempFile = `${(FileSystem as any).cacheDirectory}tts_${Date.now()}.mp3`;
-
-  // Convert ArrayBuffer → Base64 safely without btoa
-  const base64 = await new Promise<string>((resolve) => {
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      const dataUrl = reader.result as string;
-      const base64 = dataUrl.split(",")[1];
-      resolve(base64);
-    };
-    reader.readAsDataURL(new Blob([audioBuffer]));
-  });
-
-  // Write to temp file
   await FileSystem.writeAsStringAsync(tempFile, base64, {
-    encoding: (FileSystem as any).EncodingType.Base64,
+    encoding: FileSystem.EncodingType.Base64,
   });
 
-  // Set up audio mode for playback
   await Audio.setAudioModeAsync({
     allowsRecordingIOS: false,
     playsInSilentModeIOS: true,
@@ -113,75 +55,93 @@ async function playAudioNative(audioBuffer: ArrayBuffer): Promise<void> {
     if (status.isLoaded && status.didJustFinish) {
       await sound.unloadAsync();
       activeSound = null;
-      // Clean up temp file
+      isSpeaking = false;
       try { await FileSystem.deleteAsync(tempFile, { idempotent: true }); } catch {}
     }
   });
 }
 
-// ─── Main speak function ──────────────────────────────────────────────────────
-export async function speak(
-  text: string,
-  options: { timeoutMs?: number } = {}
-): Promise<void> {
-  const { timeoutMs = 15000 } = options;
-
-  // ── 1. Try ElevenLabs via server
-  try {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
-
-    const response = await fetch(`${API_URL}/api/tts`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ text }),
-      signal: controller.signal,
-    });
-
-    clearTimeout(timeoutId);
-
-    if (response.ok) {
-      console.log(`[TTS] ElevenLabs audio received successfully.`);
-      if (Platform.OS === "web") {
-        // Web: blob → object URL
-        const audioBlob = await response.blob();
-        await playAudioWeb(audioBlob);
-      } else {
-        // Native: ArrayBuffer → base64 → file → play
-        const audioBuffer = await response.arrayBuffer();
-        await playAudioNative(audioBuffer);
-      }
-      return; // ✅ ElevenLabs succeeded
-    }
-
-    console.warn(`[TTS] ElevenLabs returned ${response.status}. Using fallback.`);
-  } catch (err: any) {
-    if (err?.name === "AbortError") {
-      console.warn("[TTS] ElevenLabs timed out. Using fallback.");
-    } else {
-      console.warn("[TTS] ElevenLabs failed:", err?.message ?? err);
+/**
+ * Convert ArrayBuffer to base64 string without using Blob (React Native safe)
+ */
+function arrayBufferToBase64(buffer: ArrayBuffer): string {
+  const bytes = new Uint8Array(buffer);
+  const len = bytes.byteLength;
+  
+  // Process in chunks to avoid call stack overflow for large buffers
+  const CHUNK_SIZE = 8192;
+  let binary = '';
+  for (let i = 0; i < len; i += CHUNK_SIZE) {
+    const chunk = bytes.subarray(i, Math.min(i + CHUNK_SIZE, len));
+    // @ts-ignore — React Native's btoa works differently
+    for (let j = 0; j < chunk.length; j++) {
+      binary += String.fromCharCode(chunk[j]);
     }
   }
 
-  // ── 2. Fallback: Web Speech API (web only)
-  if (Platform.OS === "web") {
-    const ok = speakWebFallback(text);
-    if (ok) {
-      console.log("[TTS] Using Web Speech API fallback.");
-      return;
-    }
-  }
-
-  // ── 3. Fallback: expo-speech (native)
-  console.log("[TTS] Using expo-speech fallback.");
-  Speech.speak(text, { language: "ar-SA", rate: 0.9 });
+  // Use global btoa (available in React Native Hermes engine)
+  return btoa(binary);
 }
 
-// ─── Stop all speech ─────────────────────────────────────────────────────────
-export function stopSpeech() {
-  if (Platform.OS === "web" && typeof window !== "undefined") {
-    window.speechSynthesis?.cancel();
+export async function speak(text: string): Promise<void> {
+  // Prevent overlapping TTS calls
+  if (isSpeaking) {
+    console.log("[TTS] Already speaking, skipping.");
+    return;
   }
-  Speech.stop();
-  stopCurrentSound();
+
+  try {
+    isSpeaking = true;
+    console.log(`[TTS] Requesting Saudi Voice from ${API_URL} for: ${text.substring(0, 50)}...`);
+    
+    const tempFile = `${FileSystem.cacheDirectory}tts_${Date.now()}.mp3`;
+
+    // We use a GET request with query parameters because FileSystem.downloadAsync
+    // expects a GET by default and does not correctly pass HTTP body.
+    const requestUrl = `${API_URL}/api/tts?text=${encodeURIComponent(text)}`;
+    
+    const { uri, status } = await FileSystem.downloadAsync(
+      requestUrl,
+      tempFile
+    );
+
+    if (status === 200) {
+      console.log(`[TTS] ✅ Audio downloaded to ${uri} → playing...`);
+      
+      await Audio.setAudioModeAsync({
+        allowsRecordingIOS: false,
+        playsInSilentModeIOS: true,
+        shouldDuckAndroid: true,
+      });
+
+      await stopCurrentSound();
+      const { sound } = await Audio.Sound.createAsync({ uri });
+      activeSound = sound;
+      await sound.playAsync();
+
+      sound.setOnPlaybackStatusUpdate(async (playbackStatus: any) => {
+        if (playbackStatus.isLoaded && playbackStatus.didJustFinish) {
+          await sound.unloadAsync();
+          activeSound = null;
+          isSpeaking = false;
+          try { await FileSystem.deleteAsync(uri, { idempotent: true }); } catch {}
+        }
+      });
+      return; // Success!
+    } else {
+      console.warn(`[TTS] Backend returned HTTP ${status}`);
+    }
+  } catch (err: any) {
+    console.error("[TTS] Backend fail:", err?.message || err);
+    isSpeaking = false;
+  }
+
+  // Final fallback — native device speech (works offline)
+  try {
+    isSpeaking = false; // Allow local speech immediately
+    Speech.speak(text, { language: "ar-SA", rate: 0.8 });
+  } catch (localErr) {
+    console.error("[TTS] Local speech also failed:", localErr);
+    isSpeaking = false;
+  }
 }

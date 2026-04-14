@@ -15,21 +15,21 @@ import { VitalsPanel } from "@/components/VitalsPanel";
 import { DiagnosisPanel } from "@/components/DiagnosisPanel";
 import { EarlyRiskDetection } from "@/components/EarlyRiskDetection";
 import { InstructionsPanel } from "@/components/InstructionsPanel";
+import { SOSModal } from "@/components/SOSModal";
 
 export default function HomeScreen() {
   const insets = useSafeAreaInsets();
 
   return (
     <View style={[styles.root, { paddingTop: Platform.OS === "web" ? 67 : insets.top }]}>
+      <SOSModal />
       <StatusBar barStyle="light-content" backgroundColor={COLORS.bg} />
 
       <View style={styles.appBar}>
         <View style={styles.appBarLeft}>
           <MaterialCommunityIcons name="shield-plus" size={18} color={COLORS.accent} />
           <View>
-            <View style={styles.labBadge}>
-              <Text style={styles.labText}>NAWAF & MULK ALLAH AI LAB</Text>
-            </View>
+
             <Text style={styles.appBarTitle}>Smart Rescuer AI</Text>
           </View>
         </View>
@@ -103,22 +103,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 8,
   },
-  labBadge: {
-    backgroundColor: COLORS.bgCardAlt,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 4,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    marginRight: 4,
-  },
-  labText: {
-    color: COLORS.textSecondary,
-    fontSize: 8,
-    fontWeight: "700",
-    fontFamily: "Inter_700Bold",
-    letterSpacing: 0.5,
-  },
+
   appBarTitle: {
     color: COLORS.text,
     fontSize: 16,

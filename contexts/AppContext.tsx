@@ -264,14 +264,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const scenarioTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const scheduleScenarioSwitch = useCallback(() => {
-    const delay = scenarioRef.current === "normal"
-      ? 12000 + Math.random() * 20000
-      : 5000 + Math.random() * 8000;
-
-    scenarioTimerRef.current = setTimeout(() => {
-      scenarioRef.current = scenarioRef.current === "normal" ? "spike" : "normal";
-      scheduleScenarioSwitch();
-    }, delay);
+    // تم تعطيل السيناريوهات العشوائية — العلامات الحيوية تبقى طبيعية
+    // الإنذارات تأتي فقط من كشف الكاميرا والذكاء الاصطناعي
+    scenarioRef.current = "normal";
   }, []);
 
   useEffect(() => {

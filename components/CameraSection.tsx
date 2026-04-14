@@ -7,6 +7,7 @@ import {
   Pressable,
 } from "react-native";
 import { CameraView, useCameraPermissions } from "expo-camera";
+import { manipulateAsync, SaveFormat } from "expo-image-manipulator";
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -157,29 +158,45 @@ function useVisionEngine(aiRunning: boolean, cameraRef: React.RefObject<any>): D
     const analysisInterval = setInterval(async () => {
       if (isAnalyzing.current || !cameraRef.current) return;
 
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 25000); // 25s timeout
+
       try {
         isAnalyzing.current = true;
 
-        // التقاط الصورة بجودة متوسطة لسرعة الرفع والتحليل
+        // 1. التقاط الصورة من الكاميرا
         const photo = await cameraRef.current.takePictureAsync({
-          base64: true,
-          quality: 0.5,         // تقليل الجودة قليلاً لسرعة النقل
-          skipProcessing: true, // سرعة في الالتقاط
+          base64: false,        // لا نحتاج base64 من الكاميرا مباشرة
+          quality: 0.5,
+          skipProcessing: true,
           exif: false,
         });
 
-        if (!photo?.base64) return;
+        if (!photo?.uri) {
+          clearTimeout(timeoutId);
+          return;
+        }
 
-        console.log(`[AI] Image captured (${Math.round(photo.base64.length / 1024)} KB). Sending to ${API_URL}...`);
+        // 2. تصغير الصورة من 12MP → 1024px عرض (~300-500KB بدل 8MB)
+        // دقة كافية لتشخيص دقيق مع سرعة عالية في الرفع
+        const resized = await manipulateAsync(
+          photo.uri,
+          [{ resize: { width: 1024 } }],
+          { compress: 0.7, format: SaveFormat.JPEG, base64: true }
+        );
+
+        if (!resized?.base64) {
+          clearTimeout(timeoutId);
+          return;
+        }
+
+        const sizeKB = Math.round(resized.base64.length / 1024);
+        console.log(`[AI] Image resized to ${resized.width}x${resized.height} (${sizeKB} KB). Sending to ${API_URL}...`);
         
-        // استخدام AbortController لإلغاء الطلبات المتأخرة
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 8000); 
-
         const response = await fetch(`${API_URL}/api/analyze`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ imageData: `data:image/jpeg;base64,${photo.base64}` }),
+          body: JSON.stringify({ imageData: `data:image/jpeg;base64,${resized.base64}` }),
           signal: controller.signal,
         });
 
@@ -235,6 +252,15 @@ function useVisionEngine(aiRunning: boolean, cameraRef: React.RefObject<any>): D
             return (confirmCount.current.get(d.cls) || 0) >= 1; 
           });
 
+        // Only track and display ONE primary detection to avoid double boxes
+        const bestDetection = newDetections
+          .sort((a, b) => {
+            const pA = CLASS_PRIORITY[a.cls] || 0;
+            const pB = CLASS_PRIORITY[b.cls] || 0;
+            if (pA !== pB) return pB - pA;
+            return b.confidence - a.confidence;
+          })[0];
+
         // Reset counts for classes NOT found this frame
         for (const [cls] of confirmCount.current) {
           if (!foundClasses.has(cls)) {
@@ -242,15 +268,36 @@ function useVisionEngine(aiRunning: boolean, cameraRef: React.RefObject<any>): D
           }
         }
 
-        // Merge with existing (update lastSeen for confirmed, keep stale ones)
+        // Just use the single best detection with a constant ID "primary" for smooth tracking
         setDetections((prev) => {
-          const existingMap = new Map(prev.map((d) => [d.id, d]));
-          for (const d of newDetections) {
-            existingMap.set(d.id, d);
+          const old = prev[0];
+          
+          if (!bestDetection) {
+            // keep old one alive for 12 seconds
+            if (old && now - old.lastSeen < DETECTION_PERSIST_MS) return [old];
+            return [];
           }
-          return Array.from(existingMap.values()).filter(
-            (d) => now - d.lastSeen < DETECTION_PERSIST_MS
-          );
+          
+          if (old && now - old.lastSeen < DETECTION_PERSIST_MS) {
+            // الثبات: تجميد النص لمنع الوميض، وعمل Smoothing للإحداثيات ليكون المربع ثابتاً
+            return [{
+              ...bestDetection,
+              id: "primary",
+              description: old.description,   // تجميد النص
+              instructions: old.instructions, // تجميد التعليمات
+              severity: old.severity,         // تجميد الخطورة
+              x: old.x * 0.7 + bestDetection.x * 0.3, // تنعيم الحركة لمنع القفز
+              y: old.y * 0.7 + bestDetection.y * 0.3,
+              w: old.w * 0.7 + bestDetection.w * 0.3,
+              h: old.h * 0.7 + bestDetection.h * 0.3,
+              lastSeen: now,
+            }];
+          }
+
+          return [{
+            ...bestDetection,
+            id: "primary", 
+          }];
         });
 
         // 🔊 Speak only when new/different detections appear
@@ -262,10 +309,15 @@ function useVisionEngine(aiRunning: boolean, cameraRef: React.RefObject<any>): D
           }
         }
 
-      } catch (error) {
-        console.error("[VisionEngine] Analysis Error:", error);
+      } catch (error: any) {
+        if (error.name === 'AbortError') {
+          console.warn("[VisionEngine] Request timed out or aborted.");
+        } else {
+          console.error("[VisionEngine] Analysis Error:", error);
+        }
       } finally {
         isAnalyzing.current = false;
+        clearTimeout(timeoutId);
       }
     }, 3000); // Faster analysis for mobile camera (every 3s)
 
