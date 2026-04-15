@@ -229,7 +229,7 @@ function setupErrorHandler(app: express.Application) {
   });
 }
 
-(async () => {
+const startServer = async () => {
   setupCors(app);
   setupBodyParsing(app);
   setupRequestLogging(app);
@@ -240,11 +240,23 @@ function setupErrorHandler(app: express.Application) {
 
   setupErrorHandler(app);
 
-  const port = parseInt(process.env.PORT || "5000", 10);
-  // Use 0.0.0.0 to accept connections from any network (WiFi, localhost, etc.)
-  const host = process.env.HOST || "0.0.0.0";
-  server.listen(port, host, () => {
-    log(`express server serving on http://${host}:${port}`);
-    log(`For mobile: http://192.168.0.13:${port}`);
-  });
-})();
+  if (process.env.NODE_ENV !== "production" || !process.env.VERCEL) {
+    const port = parseInt(process.env.PORT || "5000", 10);
+    const host = process.env.HOST || "0.0.0.0";
+    server.listen(port, host, () => {
+      log(`express server serving on http://${host}:${port}`);
+    });
+  }
+
+  return app;
+};
+
+// Start the server or export for Vercel
+if (process.env.VERCEL) {
+  // On Vercel, we need to export the app
+  startServer();
+} else {
+  startServer();
+}
+
+export default app;

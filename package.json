@@ -4,6 +4,7 @@
   "version": "1.0.0",
   "scripts": {
     "postinstall": "node scripts/init-env.js && patch-package",
+    "build": "npm run expo:static:build",
     "dev": "npm run server:dev",
     "full": "concurrently \"npm run server:dev\" \"npm run expo:dev\"",
     "expo:dev": "npx expo start --localhost",
