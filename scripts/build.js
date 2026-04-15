@@ -468,9 +468,7 @@ function updateManifests(manifests, timestamp, baseUrl, assetsByHash) {
 
     manifest.launchAsset.url = `${baseUrl}/${timestamp}/_expo/static/js/${platform}/bundle.js`;
     manifest.launchAsset.key = `bundle-${timestamp}`;
-    manifest.createdAt = new Date(
-      Number(timestamp.split("-")[0]),
-    ).toISOString();
+    manifest.createdAt = new Date().toISOString();
     manifest.extra.expoClient.hostUri =
       baseUrl.replace("https://", "") + "/" + platform;
     manifest.extra.expoGo.debuggerHost =
