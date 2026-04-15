@@ -25,10 +25,10 @@ import { useApp } from "@/contexts/AppContext";
 import { speak } from "@/lib/tts";
 
 // API URL for camera analysis
-const API_URL =
+const API_URL = 
   Platform.OS === "web"
-    ? process.env.EXPO_PUBLIC_API_URL || "http://localhost:5000"
-    : process.env.EXPO_PUBLIC_API_URL || "http://192.168.0.11:5000"; // Default fallback
+    ? (typeof window !== "undefined" ? window.location.origin : "")
+    : (process.env.EXPO_PUBLIC_API_URL || "https://smart-rescure-ring.vercel.app");
 
 // ─── Detection Types ─────────────────────────────────────────────────────────
 

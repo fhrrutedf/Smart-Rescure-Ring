@@ -87,6 +87,21 @@ function arrayBufferToBase64(buffer: ArrayBuffer): string {
   return btoa(binary);
 }
 
+async function playAudioWeb(url: string): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const audio = new Audio(url);
+    audio.onended = () => {
+      isSpeaking = false;
+      resolve();
+    };
+    audio.onerror = (e) => {
+      isSpeaking = false;
+      reject(e);
+    };
+    audio.play().catch(reject);
+  });
+}
+
 export async function speak(text: string): Promise<void> {
   // Prevent overlapping TTS calls
   if (isSpeaking) {
@@ -96,22 +111,19 @@ export async function speak(text: string): Promise<void> {
 
   try {
     isSpeaking = true;
-    console.log(`[TTS] Requesting Saudi Voice from ${API_URL} for: ${text.substring(0, 50)}...`);
-    
-    const tempFile = `${FileSystem.cacheDirectory}tts_${Date.now()}.mp3`;
-
-    // We use a GET request with query parameters because FileSystem.downloadAsync
-    // expects a GET by default and does not correctly pass HTTP body.
     const requestUrl = `${API_URL}/api/tts?text=${encodeURIComponent(text)}`;
-    
-    const { uri, status } = await FileSystem.downloadAsync(
-      requestUrl,
-      tempFile
-    );
+    console.log(`[TTS] Requesting Saudi Voice from ${requestUrl}`);
+
+    if (Platform.OS === 'web') {
+      await playAudioWeb(requestUrl);
+      return;
+    }
+
+    // Native implementation (Expo Go)
+    const tempFile = `${FileSystem.cacheDirectory}tts_${Date.now()}.mp3`;
+    const { status } = await FileSystem.downloadAsync(requestUrl, tempFile);
 
     if (status === 200) {
-      console.log(`[TTS] ✅ Audio downloaded to ${uri} → playing...`);
-      
       await Audio.setAudioModeAsync({
         allowsRecordingIOS: false,
         playsInSilentModeIOS: true,
@@ -119,7 +131,7 @@ export async function speak(text: string): Promise<void> {
       });
 
       await stopCurrentSound();
-      const { sound } = await Audio.Sound.createAsync({ uri });
+      const { sound } = await Audio.Sound.createAsync({ uri: tempFile });
       activeSound = sound;
       await sound.playAsync();
 
@@ -128,12 +140,10 @@ export async function speak(text: string): Promise<void> {
           await sound.unloadAsync();
           activeSound = null;
           isSpeaking = false;
-          try { await FileSystem.deleteAsync(uri, { idempotent: true }); } catch {}
+          try { await FileSystem.deleteAsync(tempFile, { idempotent: true }); } catch {}
         }
       });
-      return; // Success!
-    } else {
-      console.warn(`[TTS] Backend returned HTTP ${status}`);
+      return;
     }
   } catch (err: any) {
     console.error("[TTS] Backend fail:", err?.message || err);
@@ -142,7 +152,7 @@ export async function speak(text: string): Promise<void> {
 
   // Final fallback — native device speech (works offline)
   try {
-    isSpeaking = false; // Allow local speech immediately
+    isSpeaking = false; 
     Speech.speak(text, { language: "ar-SA", rate: 0.8 });
   } catch (localErr) {
     console.error("[TTS] Local speech also failed:", localErr);
