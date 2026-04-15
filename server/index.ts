@@ -7,7 +7,9 @@ import { registerRoutes } from "./routes";
 import * as fs from "fs";
 import * as path from "path";
 
+import compression from "compression";
 const app = express();
+app.use(compression());
 const log = console.log;
 
 declare module "http" {
