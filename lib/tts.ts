@@ -6,14 +6,18 @@ import Constants from 'expo-constants';
 
 // Automatically get the correct host IP from Expo debugger or fallback
 const getApiUrl = () => {
-  if (Platform.OS === 'web') return "http://localhost:5000";
+  // 1. Priority: Environment variable from .env (Vercel Production URL)
+  if (process.env.EXPO_PUBLIC_API_URL) return process.env.EXPO_PUBLIC_API_URL;
+
+  // 2. Web fallback
+  if (Platform.OS === 'web') return window.location.origin;
   
-  // Try to get debugger host (the IP of your laptop)
+  // 3. Expo Go Debugger host (Local Development)
   const debuggerHost = Constants.expoConfig?.hostUri?.split(':').shift();
   if (debuggerHost) return `http://${debuggerHost}:5000`;
   
-  // Hard fallback to current laptop IP
-  return "http://192.168.0.11:5000"; 
+  // 4. Hard fallback (Change this to your Vercel URL if env var is missing)
+  return "https://smart-rescuer-ring.vercel.app"; 
 };
 
 const API_URL = getApiUrl();

@@ -49,31 +49,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let audioBuffer: Buffer | null = null;
       let engine = "none";
 
-      // 1️⃣ Microsoft Edge TTS — صوت حامد السعودي (أفضل جودة عربية)
+      // 1️⃣ ElevenLabs — Premium Quality (Primary)
       try {
-        audioBuffer = await generateMicrosoftSpeech(text);
-        if (audioBuffer) engine = "microsoft-hamed";
+        audioBuffer = await generateElevenLabsSpeech(text);
+        if (audioBuffer) engine = "elevenlabs";
       } catch (e) {
-        console.warn("[TTS] Microsoft حامد failed, trying Google...");
+        console.warn("[TTS] ElevenLabs failed, trying Google...");
       }
 
-      // 2️⃣ Google Translate TTS fallback (free, reliable)
+      // 2️⃣ Google Translate TTS — Free and Reliable (Fallback)
       if (!audioBuffer) {
         try {
           audioBuffer = await generateGoogleTTS(text, lang || "ar");
           if (audioBuffer) engine = "google";
         } catch (e) {
-          console.warn("[TTS] Google TTS also failed, trying ElevenLabs...");
+          console.warn("[TTS] Google TTS failed, trying Microsoft...");
         }
       }
 
-      // 3️⃣ ElevenLabs fallback (may be blocked by Cloudflare)
+      // 3️⃣ Microsoft Edge TTS — Fallback only (May be blocked on Vercel)
       if (!audioBuffer) {
         try {
-          audioBuffer = await generateElevenLabsSpeech(text);
-          if (audioBuffer) engine = "elevenlabs";
+          audioBuffer = await generateMicrosoftSpeech(text);
+          if (audioBuffer) engine = "microsoft-hamed";
         } catch (e) {
-          console.warn("[TTS] ElevenLabs also failed.");
+          console.warn("[TTS] Microsoft Hamid also failed.");
         }
       }
 
