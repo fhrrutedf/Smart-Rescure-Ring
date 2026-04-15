@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Smart Rescuer - AI Vision</title>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #ef4444;
+            --primary-dark: #b91c1c;
+            --bg: #0f172a;
+            --card: #1e293b;
+            --text: #f8fafc;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            font-family: 'Cairo', sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            overflow: hidden;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        #camera-container {
+            position: relative;
+            flex: 1;
+            background: #000;
+            overflow: hidden;
+        }
+
+        #video {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        /* Scanning HUD */
+        .hud-overlay {
+            position: absolute;
+            inset: 0;
+            pointer-events: none;
+            border: 20px solid rgba(0, 0, 0, 0.3);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .scanning-line {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 4px;
+            background: linear-gradient(to bottom, transparent, var(--primary), transparent);
+            box-shadow: 0 0 20px var(--primary);
+            animation: scan 3s linear infinite;
+        }
+
+        @keyframes scan {
+            0% { top: 0%; }
+            100% { top: 100%; }
+        }
+
+        .corner {
+            position: absolute;
+            width: 30px;
+            height: 30px;
+            border: 4px solid var(--primary);
+            opacity: 0.8;
+        }
+        .top-left { top: 20px; left: 20px; border-right: 0; border-bottom: 0; }
+        .top-right { top: 20px; right: 20px; border-left: 0; border-bottom: 0; }
+        .bottom-left { bottom: 20px; left: 20px; border-right: 0; border-top: 0; }
+        .bottom-right { bottom: 20px; right: 20px; border-left: 0; border-top: 0; }
+
+        /* Status Panels */
+        .vitals-panel {
+            position: absolute;
+            top: 40px;
+            right: 20px;
+            background: rgba(15, 23, 42, 0.7);
+            backdrop-filter: blur(10px);
+            padding: 10px 15px;
+            border-radius: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .vital-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 14px;
+        }
+
+        .vital-icon { color: var(--primary); }
+
+        .ai-status {
+            position: absolute;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(10px);
+            padding: 15px 25px;
+            border-radius: 30px;
+            border: 1px solid var(--primary);
+            font-size: 16px;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            min-width: 250px;
+            justify-content: center;
+            transition: all 0.3s;
+        }
+
+        .status-dot {
+            width: 10px;
+            height: 10px;
+            background: var(--primary);
+            border-radius: 50%;
+            box-shadow: 0 0 10px var(--primary);
+            animation: pulse 1s infinite;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.4; transform: scale(1.2); }
+            100% { opacity: 1; transform: scale(1); }
+        }
+
+        /* Controls */
+        .controls {
+            padding: 20px;
+            background: var(--card);
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+        }
+
+        .btn-capture {
+            width: 70px;
+            height: 70px;
+            background: white;
+            border-radius: 50%;
+            border: 5px solid var(--primary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 0 20px rgba(239, 68, 68, 0.4);
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+
+        .btn-capture:active { transform: scale(0.9); }
+
+        .btn-capture::after {
+            content: '';
+            width: 50px;
+            height: 50px;
+            background: var(--primary);
+            border-radius: 50%;
+        }
+
+        canvas { display: none; }
+
+        #detection-msg {
+            white-space: pre-wrap;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <div id="camera-container">
+        <video id="video" autoplay playsinline muted></video>
+        
+        <div class="hud-overlay">
+            <div class="scanning-line"></div>
+            <div class="corner top-left"></div>
+            <div class="corner top-right"></div>
+            <div class="corner bottom-left"></div>
+            <div class="corner bottom-right"></div>
+        </div>
+
+        <div class="vitals-panel">
+            <div class="vital-item">
+                <span class="vital-icon">❤️</span>
+                <span id="vital-hr">72 BPM</span>
+            </div>
+            <div class="vital-item">
+                <span class="vital-icon">🌡️</span>
+                <span id="vital-temp">36.6°C</span>
+            </div>
+        </div>
+
+        <div class="ai-status" id="ai-status">
+            <div class="status-dot"></div>
+            <span id="detection-msg">جاري مسح المنطقة...</span>
+        </div>
+    </div>
+
+    <div class="controls">
+        <div id="capture-btn" class="btn-capture"></div>
+    </div>
+
+    <canvas id="canvas"></canvas>
+
+    <script>
+        const video = document.getElementById('video');
+        const canvas = document.getElementById('canvas');
+        const captureBtn = document.getElementById('capture-btn');
+        const statusMsg = document.getElementById('detection-msg');
+        
+        let isAnalyzing = false;
+
+        async function initCamera() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ 
+                    video: { facingMode: 'environment' }, 
+                    audio: false 
+                });
+                video.srcObject = stream;
+            } catch (err) {
+                console.error("Camera error:", err);
+                statusMsg.innerText = "فشل فتح الكاميرا (يرجى السماح بالوصول)";
+            }
+        }
+
+        async function speak(text) {
+            try {
+                const audio = new Audio(`/api/tts?text=${encodeURIComponent(text)}`);
+                await audio.play();
+            } catch (err) {
+                console.error("Audio error:", err);
+            }
+        }
+
+        async function analyzeFrame() {
+            if (isAnalyzing) return;
+            isAnalyzing = true;
+            statusMsg.innerText = "جاري التحليل بالذكاء الاصطناعي...";
+
+            const context = canvas.getContext('2d');
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            context.drawImage(video, 0, 0);
+
+            const imageData = canvas.toDataURL('image/jpeg', 0.8);
+            const base64 = imageData.split(',')[1];
+
+            try {
+                const response = await fetch('/api/vision', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ image: base64 })
+                });
+
+                const data = await response.json();
+                
+                if (data.results && data.results.length > 0) {
+                    const primary = data.results[0];
+                    statusMsg.innerText = `تم الكشف: ${primary.label}\n${primary.description}`;
+                    
+                    // Trigger Audio
+                    if (primary.guidance) {
+                        speak(primary.guidance);
+                    }
+                } else {
+                    statusMsg.innerText = "لم يتم العثور على إصابات واضحة.";
+                }
+            } catch (err) {
+                console.error("Analysis error:", err);
+                statusMsg.innerText = "حدث خطأ في الاتصال بالسيرفر.";
+            } finally {
+                isAnalyzing = false;
+            }
+        }
+
+        captureBtn.addEventListener('click', analyzeFrame);
+
+        // Periodically pulse vitals
+        setInterval(() => {
+            const hr = 70 + Math.floor(Math.random() * 10);
+            document.getElementById('vital-hr').innerText = `${hr} BPM`;
+        }, 3000);
+
+        initCamera();
+    </script>
+</body>
+</html>

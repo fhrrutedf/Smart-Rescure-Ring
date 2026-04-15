@@ -187,6 +187,12 @@ function configureExpoAndLanding(app: express.Application) {
       return serveExpoManifest(platform, req, res);
     }
 
+    if (req.path === "/app") {
+      const appTemplatePath = path.resolve(process.cwd(), "server", "templates", "app.html");
+      const appTemplate = fs.readFileSync(appTemplatePath, "utf-8");
+      return res.send(appTemplate);
+    }
+
     if (req.path === "/") {
       return serveLandingPage({
         req,
