@@ -100,7 +100,7 @@ function getAppName(): string {
 function serveExpoManifest(platform: string, res: Response) {
   const manifestPath = path.resolve(
     process.cwd(),
-    "static-build",
+    "public",
     platform,
     "manifest.json",
   );
@@ -188,7 +188,7 @@ function configureExpoAndLanding(app: express.Application) {
   });
 
   app.use("/assets", express.static(path.resolve(process.cwd(), "assets")));
-  app.use(express.static(path.resolve(process.cwd(), "static-build")));
+  app.use(express.static(path.resolve(process.cwd(), "public")));
 
   log("Expo routing: Checking expo-platform header on / and /manifest");
 }
