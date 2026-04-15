@@ -127,6 +127,7 @@ async function startMetro(expoPublicDomain) {
     stdio: ["ignore", "pipe", "pipe"],
     detached: false,
     env,
+    shell: true,
   });
 
   if (metroProcess.stdout) {
@@ -158,8 +159,8 @@ async function startMetro(expoPublicDomain) {
 
 async function downloadFile(url, outputPath) {
   const controller = new AbortController();
-  const fiveMinMS = 5 * 60 * 1_000;
-  const timeoutId = setTimeout(() => controller.abort(), fiveMinMS);
+  const tenMinMS = 10 * 60 * 1_000;
+  const timeoutId = setTimeout(() => controller.abort(), tenMinMS);
 
   try {
     console.log(`Downloading: ${url}`);
@@ -515,7 +516,7 @@ async function main() {
 
   await startMetro(domain);
 
-  const downloadTimeout = 300000;
+  const downloadTimeout = 600000;
   const downloadPromise = downloadBundlesAndManifests(timestamp);
   const timeoutPromise = new Promise((_, reject) => {
     setTimeout(() => {
