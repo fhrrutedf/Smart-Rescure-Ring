@@ -17,7 +17,7 @@ const getApiUrl = () => {
   if (debuggerHost) return `http://${debuggerHost}:5000`;
   
   // 4. Hard fallback (Change this to your Vercel URL if env var is missing)
-  return "https://smart-rescuer-ring.vercel.app"; 
+  return "https://smart-rescure-ring.vercel.app"; 
 };
 
 const API_URL = getApiUrl();

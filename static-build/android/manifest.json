@@ -1,11 +1,11 @@
 {
-  "id": "2f0699d1-85ab-46a7-9cb6-dfb6051f4c5c",
-  "createdAt": "2026-04-15T01:55:07.533Z",
+  "id": "6d31721c-cd96-4bca-81ce-f174c36c45da",
+  "createdAt": "2026-04-15T02:08:05.028Z",
   "runtimeVersion": "exposdk:54.0.0",
   "launchAsset": {
-    "key": "bundle-1776218107533-10924",
+    "key": "bundle-1776218885028-17748",
     "contentType": "application/javascript",
-    "url": "https://smart-rescure-ring.vercel.app/1776218107533-10924/_expo/static/js/android/bundle.js"
+    "url": "https://smart-rescure-ring.vercel.app/1776218885028-17748/_expo/static/js/android/bundle.js"
   },
   "assets": [],
   "metadata": {},
