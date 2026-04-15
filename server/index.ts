@@ -178,11 +178,16 @@ function configureExpoAndLanding(app: express.Application) {
       return next();
     }
 
-    if (req.path !== "/" && req.path !== "/manifest") {
+    if (req.path !== "/" && req.path !== "/manifest" && req.path !== "/android" && req.path !== "/ios") {
       return next();
     }
 
-    const platform = req.header("expo-platform");
+    let platform = req.header("expo-platform");
+    if (!platform) {
+      if (req.path === "/android") platform = "android";
+      if (req.path === "/ios") platform = "ios";
+    }
+
     if (platform && (platform === "ios" || platform === "android")) {
       return serveExpoManifest(platform, req, res);
     }
