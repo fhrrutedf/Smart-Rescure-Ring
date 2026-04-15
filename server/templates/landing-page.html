@@ -400,33 +400,25 @@
     <script>
       (function () {
         const ua = navigator.userAgent;
+        const host = window.location.host;
+        const plat = (ua.includes('iPhone') || ua.includes('iPad')) ? 'ios' : 'android';
+        const expsUrl = `exp://${host}/${plat}`;
+        
         const loadingEl = document.getElementById("loading");
         const contentEl = document.getElementById("content");
-
-        const isAndroid = /Android/i.test(ua);
         const isIOS =
           /iPhone|iPad|iPod/i.test(ua) ||
           (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+        const isAndroid = /Android/i.test(ua);
 
-        const deepLink = "exps://EXPS_URL_PLACEHOLDER";
-
-        // Adjust store buttons based on platform
-        const appStoreBtn = document.getElementById("app-store-btn");
-        const playStoreBtn = document.getElementById("play-store-btn");
-        const storeButtonsContainer = document.getElementById("store-buttons");
-
-        if (isIOS) {
-          playStoreBtn.className = "store-link";
-          storeButtonsContainer.appendChild(playStoreBtn);
-        } else if (isAndroid) {
-          appStoreBtn.className = "store-link";
-          storeButtonsContainer.insertBefore(playStoreBtn, appStoreBtn);
-        }
+        // Adjust open button
+        const openBtn = document.querySelector('a.open-button:last-child');
+        if (openBtn) openBtn.href = expsUrl;
 
         const qrCode = new QRCodeStyling({
           width: 400,
           height: 400,
-          data: deepLink,
+          data: expsUrl,
           dotsOptions: {
             color: "#333333",
             type: "rounded",
@@ -450,7 +442,7 @@
         if (isAndroid || isIOS) {
           loadingEl.style.display = "block";
           contentEl.style.display = "none";
-          window.location.href = deepLink;
+          window.location.href = expsUrl;
           setTimeout(function () {
             loadingEl.style.display = "none";
             contentEl.style.display = "block";
