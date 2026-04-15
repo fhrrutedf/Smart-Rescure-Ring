@@ -509,7 +509,7 @@ async function main() {
 
   const domain = getDeploymentDomain();
   const baseUrl = `https://${domain}`;
-  const timestamp = `${Date.now()}-${process.pid}`;
+  const timestamp = `latest`;
 
   prepareDirectories(timestamp);
   clearMetroCache();
