@@ -560,19 +560,12 @@ export function CameraSection() {
   return (
     <View style={styles.container}>
       {/* Camera feed */}
-      {Platform.OS !== "web" ? (
-        <CameraView
-          ref={cameraRef}
-          style={StyleSheet.absoluteFill}
-          facing="back"
-          onCameraReady={onCameraReady}
-        />
-      ) : (
-        <View style={[StyleSheet.absoluteFill, styles.webCameraFallback]}>
-          <MaterialCommunityIcons name="camera" size={40} color={COLORS.textMuted} />
-          <Text style={styles.webCameraText}>Camera preview on device</Text>
-        </View>
-      )}
+      <CameraView
+        ref={cameraRef}
+        style={StyleSheet.absoluteFill}
+        facing="back"
+        onCameraReady={onCameraReady}
+      />
 
       {/* Dark vignette overlay */}
       <View style={styles.darkOverlay} pointerEvents="none" />
