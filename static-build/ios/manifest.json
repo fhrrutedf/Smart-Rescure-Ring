@@ -1,0 +1,120 @@
+{
+  "id": "41fdcaeb-1d41-4167-b1d7-db1a37787417",
+  "createdAt": "2026-04-15T01:55:07.533Z",
+  "runtimeVersion": "exposdk:54.0.0",
+  "launchAsset": {
+    "key": "bundle-1776218107533-10924",
+    "contentType": "application/javascript",
+    "url": "https://smart-rescure-ring.vercel.app/1776218107533-10924/_expo/static/js/ios/bundle.js"
+  },
+  "assets": [],
+  "metadata": {},
+  "extra": {
+    "eas": {},
+    "expoClient": {
+      "name": "Smart Rescuer",
+      "slug": "smartrescuer",
+      "version": "1.0.0",
+      "orientation": "portrait",
+      "icon": "./assets/images/icon.png",
+      "scheme": "smartrescuer",
+      "userInterfaceStyle": "dark",
+      "newArchEnabled": true,
+      "splash": {
+        "image": "./assets/images/splash-icon.png",
+        "resizeMode": "contain",
+        "backgroundColor": "#0A0C0E",
+        "imageUrl": "http://127.0.0.1:8081/assets/./assets/images/splash-icon.png"
+      },
+      "ios": {
+        "supportsTablet": false,
+        "bundleIdentifier": "com.smartrescuer.app"
+      },
+      "android": {
+        "package": "com.smartrescuer.app",
+        "adaptiveIcon": {
+          "backgroundColor": "#0A0C0E",
+          "foregroundImage": "./assets/images/android-icon-foreground.png",
+          "backgroundImage": "./assets/images/android-icon-background.png",
+          "monochromeImage": "./assets/images/android-icon-monochrome.png",
+          "foregroundImageUrl": "http://127.0.0.1:8081/assets/./assets/images/android-icon-foreground.png",
+          "monochromeImageUrl": "http://127.0.0.1:8081/assets/./assets/images/android-icon-monochrome.png",
+          "backgroundImageUrl": "http://127.0.0.1:8081/assets/./assets/images/android-icon-background.png"
+        },
+        "permissions": [
+          "android.permission.CAMERA",
+          "android.permission.RECORD_AUDIO"
+        ]
+      },
+      "web": {
+        "favicon": "./assets/images/favicon.png"
+      },
+      "plugins": [
+        [
+          "expo-router",
+          {
+            "origin": "https://replit.com/"
+          }
+        ],
+        "expo-font",
+        "expo-web-browser",
+        [
+          "expo-camera",
+          {
+            "cameraPermission": "Allow Smart Rescuer AI to access your camera for emergency detection."
+          }
+        ]
+      ],
+      "experiments": {
+        "typedRoutes": true,
+        "reactCompiler": true
+      },
+      "_internal": {
+        "isDebug": false,
+        "projectRoot": "D:\\nmlee_workspace\\Smart-Rescure-Ring",
+        "dynamicConfigPath": {},
+        "staticConfigPath": "D:\\nmlee_workspace\\Smart-Rescure-Ring\\app.json",
+        "packageJsonPath": "D:\\nmlee_workspace\\Smart-Rescure-Ring\\package.json",
+        "pluginHistory": {
+          "expo-font": {
+            "name": "expo-font",
+            "version": "14.0.11"
+          },
+          "expo-web-browser": {
+            "name": "expo-web-browser",
+            "version": "15.0.10"
+          },
+          "expo-camera": {
+            "name": "expo-camera",
+            "version": "17.0.10"
+          }
+        }
+      },
+      "sdkVersion": "54.0.0",
+      "platforms": [
+        "ios",
+        "android",
+        "web"
+      ],
+      "extra": {
+        "router": {
+          "origin": "https://replit.com/"
+        }
+      },
+      "iconUrl": "http://127.0.0.1:8081/assets/./assets/images/icon.png",
+      "hostUri": "smart-rescure-ring.vercel.app/ios"
+    },
+    "expoGo": {
+      "debuggerHost": "smart-rescure-ring.vercel.app/ios",
+      "developer": {
+        "tool": "expo-cli",
+        "projectRoot": "D:\\nmlee_workspace\\Smart-Rescure-Ring"
+      },
+      "packagerOpts": {
+        "dev": false
+      },
+      "mainModuleName": "node_modules/expo-router/entry"
+    },
+    "scopeKey": "@anonymous/smartrescuer-df6cb26d-1c4d-44be-9c89-c3e23dd58611"
+  }
+}
