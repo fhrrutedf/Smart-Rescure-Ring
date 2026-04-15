@@ -97,7 +97,7 @@ function getAppName(): string {
   }
 }
 
-function serveExpoManifest(platform: string, res: Response) {
+function serveExpoManifest(platform: string, req: Request, res: Response) {
   const manifestPath = path.resolve(
     process.cwd(),
     "public",
@@ -115,8 +115,20 @@ function serveExpoManifest(platform: string, res: Response) {
   res.setHeader("expo-sfv-version", "0");
   res.setHeader("content-type", "application/json");
 
-  const manifest = fs.readFileSync(manifestPath, "utf-8");
-  res.send(manifest);
+  let manifestRaw = fs.readFileSync(manifestPath, "utf-8");
+  
+  // Dynamically fix the host in the manifest to match current request
+  const host = req.get("host");
+  const protocol = (req.header("x-forwarded-proto") || "https");
+  const baseUrl = `${protocol}://${host}`;
+  
+  // Replace any hardcoded/latest URLs with the current absolute deployment URL
+  // This handles the case where the build was done for one domain but served on another
+  manifestRaw = manifestRaw.replace(/https:\/\/[^/]+/g, baseUrl);
+  // Also handle any relative paths that might have survived
+  manifestRaw = manifestRaw.replace(/"url":"\/latest/g, `"url":"${baseUrl}/latest`);
+
+  res.send(manifestRaw);
 }
 
 function serveLandingPage({
@@ -172,7 +184,7 @@ function configureExpoAndLanding(app: express.Application) {
 
     const platform = req.header("expo-platform");
     if (platform && (platform === "ios" || platform === "android")) {
-      return serveExpoManifest(platform, res);
+      return serveExpoManifest(platform, req, res);
     }
 
     if (req.path === "/") {
