@@ -1,6 +1,5 @@
 import { sql } from "drizzle-orm";
 import { pgTable, text, varchar, timestamp, json } from "drizzle-orm/pg-core";
-import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
 export const users = pgTable("users", {
@@ -20,14 +19,15 @@ export const detections = pgTable("detections", {
   timestamp: timestamp("timestamp").notNull().defaultNow(),
 });
 
-export const insertUserSchema = createInsertSchema(users).pick({
-  username: true,
-  password: true,
+// Using manual Zod schemas to avoid Drizzle-Zod inference issues with newer TS versions
+export const insertUserSchema = z.object({
+  username: z.string().min(3),
+  password: z.string().min(6),
 });
 
-export const insertDetectionSchema = createInsertSchema(detections).pick({
-  detections: true,
-  imagePreview: true,
+export const insertDetectionSchema = z.object({
+  detections: z.any(),
+  imagePreview: z.string().optional().nullable(),
 });
 
 export type InsertUser = z.infer<typeof insertUserSchema>;

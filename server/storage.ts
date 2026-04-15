@@ -40,7 +40,10 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createUser(insertUser: InsertUser): Promise<User> {
-    const [user] = await this.db.insert(users).values(insertUser).returning();
+    const [user] = await this.db.insert(users).values({
+      username: insertUser.username,
+      password: insertUser.password
+    }).returning();
     return user;
   }
 
@@ -57,7 +60,6 @@ export class DatabaseStorage implements IStorage {
   }
 
   async saveLog(log: any): Promise<void> {
-    // Optional: Log to database if needed
     console.log("[Audit Log]:", log);
   }
 }
@@ -69,7 +71,6 @@ export class MemStorage implements IStorage {
   private usersData: Map<string, User> = new Map();
   private detectionsData: Detection[] = [];
   private logs: any[] = [];
-  private idCounter = 1;
 
   async getUser(id: string): Promise<User | undefined> {
     return this.usersData.get(id);
