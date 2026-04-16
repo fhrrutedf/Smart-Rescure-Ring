@@ -167,10 +167,6 @@ export function VitalsPanel() {
   );
 }
 
-
-
-}
-
 const styles = StyleSheet.create({
   container: {
     backgroundColor: COLORS.bgCard,
