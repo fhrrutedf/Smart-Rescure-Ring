@@ -6,6 +6,7 @@
   "build": {
     "development": {
       "distribution": "internal",
+      "developmentClient": true,
       "android": {
         "buildType": "apk",
         "gradleCommand": ":app:assembleDebug"
@@ -16,14 +17,17 @@
     },
     "preview": {
       "distribution": "internal",
+      "developmentClient": false,
       "android": {
-        "buildType": "apk"
+        "buildType": "apk",
+        "gradleCommand": ":app:assembleRelease"
       },
       "env": {
         "EXPO_PUBLIC_API_URL": "http://76.13.40.84"
       }
     },
     "production": {
+      "developmentClient": false,
       "android": {
         "buildType": "app-bundle"
       },
