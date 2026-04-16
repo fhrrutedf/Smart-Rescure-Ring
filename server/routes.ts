@@ -9,6 +9,11 @@ import { generateSpeech as generateElevenLabsSpeech } from "./elevenlabs-service
 import { generateGoogleTTS } from "./google-tts-service";
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Health Check — used by nginx, monitoring tools, and mobile app connectivity test
+  app.get("/api/health", (_req, res) => {
+    res.json({ status: "ok", timestamp: new Date().toISOString(), port: process.env.PORT || 5001 });
+  });
+
   // Medical Analysis API
   app.post("/api/analyze", async (req, res) => {
     console.log(`[API] /api/analyze called at ${new Date().toLocaleTimeString()}`);
