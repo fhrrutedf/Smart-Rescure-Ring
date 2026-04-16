@@ -19,7 +19,6 @@
     },
     "android": {
       "package": "com.smartrescuer.app",
-      "usesCleartextTraffic": true,
       "adaptiveIcon": {
         "backgroundColor": "#0A0C0E",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
@@ -29,10 +28,7 @@
       "permissions": [
         "android.permission.CAMERA",
         "android.permission.RECORD_AUDIO"
-      ],
-      "config": {
-        "usesCleartextTraffic": true
-      }
+      ]
     },
     "web": {
       "favicon": "./assets/images/favicon.png"
@@ -45,6 +41,14 @@
         "expo-camera",
         {
           "cameraPermission": "Allow Smart Rescuer AI to access your camera for emergency detection."
+        }
+      ],
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "usesCleartextTraffic": true
+          }
         }
       ]
     ],
