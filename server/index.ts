@@ -249,10 +249,20 @@ const startServer = async () => {
   setupErrorHandler(app);
 
   if (process.env.NODE_ENV !== "production" || !process.env.VERCEL) {
-    const port = parseInt(process.env.PORT || "5000", 10);
+    const port = parseInt(process.env.PORT || "5001", 10);
     const host = process.env.HOST || "0.0.0.0";
+
+    server.on("error", (err: NodeJS.ErrnoException) => {
+      if (err.code === "EADDRINUSE") {
+        console.error(`❌ Port ${port} is already in use. Set a different PORT in your .env file.`);
+        process.exit(1);
+      } else {
+        throw err;
+      }
+    });
+
     server.listen(port, host, () => {
-      log(`express server serving on http://${host}:${port}`);
+      log(`✅ Server running on port ${port} → http://${host}:${port}`);
     });
   }
 

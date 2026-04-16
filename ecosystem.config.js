@@ -24,7 +24,7 @@ module.exports = {
       // ── Environment ───────────────────────────────────────────────────────
       env: {
         NODE_ENV: "production",
-        PORT: 5000,
+        PORT: 5001,
         HOST: "0.0.0.0",
       },
       // PM2 loads the .env file from the project root automatically when using env_file:
