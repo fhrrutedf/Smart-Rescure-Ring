@@ -58,12 +58,9 @@ function RiskRow({
 }
 
 export function EarlyRiskDetection() {
-  const { vitals } = useApp();
-  const { heartRate, spo2, temperature, motionStatus } = vitals;
-
-  const heartRisk = computeHeartRisk(heartRate, spo2);
-  const diabetesRisk = computeDiabetesRisk(temperature, heartRate);
-  const strokeRisk = computeStrokeRisk(motionStatus, heartRate);
+  // ── DEMO MODE: always show low (green) risk ───────────────────────────────
+  const heartRisk: RiskLevel  = "low";
+  const strokeRisk: RiskLevel = "low";
 
   return (
     <View style={styles.container}>
@@ -77,9 +74,8 @@ export function EarlyRiskDetection() {
       </View>
 
       <View style={styles.riskList}>
-        <RiskRow label="مخاطر القلب" level={heartRisk} isLast={false} />
-        <RiskRow label="مخاطر السكري" level={diabetesRisk} isLast={false} />
-        <RiskRow label="مخاطر السكتة الدماغية" level={strokeRisk} isLast={true} />
+        <RiskRow label="مخاطر القلب"           level={heartRisk}  isLast={false} />
+        <RiskRow label="مخاطر السكتة الدماغية" level={strokeRisk} isLast={true}  />
       </View>
 
       <View style={styles.legend}>

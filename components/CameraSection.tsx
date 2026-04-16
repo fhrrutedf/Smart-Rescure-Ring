@@ -23,6 +23,7 @@ import { MaterialCommunityIcons } from "@expo/vector-icons";
 import COLORS from "@/constants/colors";
 import { useApp } from "@/contexts/AppContext";
 import { speak } from "@/lib/tts";
+import { EmergencyAlert } from "@/components/EmergencyAlert";
 
 // API URL for camera analysis
 const API_URL = 
@@ -507,8 +508,21 @@ export function CameraSection() {
   const [permission, requestPermission] = useCameraPermissions();
   const { visionAlert, emergencyStatus, setCameraReady, aiRunning, setLatestDetections } = useApp();
   const cameraRef = useRef<any>(null);
+  const [showEmergencyAlert, setShowEmergencyAlert] = useState(false);
+  const alertShownRef = useRef(false); // prevent re-showing until next new emergency
 
   const detections = useVisionEngine(aiRunning, cameraRef);
+
+  // Trigger emergency alert when AI detects a critical situation
+  useEffect(() => {
+    if (emergencyStatus === "emergency" && !alertShownRef.current) {
+      alertShownRef.current = true;
+      setShowEmergencyAlert(true);
+    }
+    if (emergencyStatus === "normal") {
+      alertShownRef.current = false;
+    }
+  }, [emergencyStatus]);
 
   // تحديث السياق العام بآخر الكشوفات لعرضها في الألواح الأخرى
   useEffect(() => {
@@ -559,6 +573,11 @@ export function CameraSection() {
 
   return (
     <View style={styles.container}>
+      {/* Emergency Alert Modal */}
+      <EmergencyAlert
+        visible={showEmergencyAlert}
+        onDismiss={() => setShowEmergencyAlert(false)}
+      />
       {/* Camera feed */}
       {Platform.OS !== "web" ? (
         <CameraView

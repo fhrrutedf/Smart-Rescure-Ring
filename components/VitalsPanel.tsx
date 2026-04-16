@@ -107,21 +107,12 @@ function ConnectionBadge({ connected }: { connected: boolean }) {
 }
 
 export function VitalsPanel() {
-  const { vitals } = useApp();
-
-  const hrAlert = vitals.heartRate > 140 || vitals.heartRate < 40;
-  const spo2Alert = vitals.spo2 < 90;
-  const tempAlert = vitals.temperature > 39;
-  const motionAlert = vitals.motionStatus === "Sudden Movement";
-
-  // ترجمة حالة الحركة
-  const getMotionLabel = (status: string) => {
-    switch (status) {
-      case "Still": return "مستقر";
-      case "Moving": return "يتحرك";
-      case "Sudden Movement": return "حركة مفاجئة";
-      default: return status;
-    }
+  // ── DEMO MODE: Static normal values for presentation ──────────────────────
+  const STATIC_VITALS = {
+    heartRate: "70",
+    spo2:      "98.6",
+    temperature: "36.6",
+    motion:    "مستقر",
   };
 
   return (
@@ -131,7 +122,7 @@ export function VitalsPanel() {
           <MaterialCommunityIcons name="heart-pulse" size={15} color={COLORS.accent} />
           <Text style={styles.headerTitle}>العلامات الحيوية</Text>
         </View>
-        <ConnectionBadge connected={vitals.ringConnected} />
+        <ConnectionBadge connected={true} />
       </View>
 
       <View style={styles.grid}>
@@ -139,41 +130,45 @@ export function VitalsPanel() {
           icon="heart-pulse"
           iconLibrary="mci"
           label="نبض القلب"
-          value={String(vitals.heartRate)}
+          value={STATIC_VITALS.heartRate}
           unit="BPM"
-          isAlert={hrAlert}
-          isConnected={vitals.ringConnected}
+          isAlert={false}
+          isConnected={true}
         />
         <VitalCard
           icon="water-percent"
           iconLibrary="mci"
           label="الأكسجين"
-          value={String(vitals.spo2)}
+          value={STATIC_VITALS.spo2}
           unit="%"
-          isAlert={spo2Alert}
-          isConnected={vitals.ringConnected}
+          isAlert={false}
+          isConnected={true}
         />
         <VitalCard
           icon="thermometer"
           iconLibrary="mci"
           label="الحرارة"
-          value={String(vitals.temperature)}
+          value={STATIC_VITALS.temperature}
           unit="°C"
-          isAlert={tempAlert}
-          isConnected={vitals.ringConnected}
+          isAlert={false}
+          isConnected={true}
         />
         <VitalCard
           icon="motion-sensor"
           iconLibrary="mci"
           label="الحركة"
-          value={getMotionLabel(vitals.motionStatus)}
+          value={STATIC_VITALS.motion}
           unit=""
-          isAlert={motionAlert}
-          isConnected={vitals.ringConnected}
+          isAlert={false}
+          isConnected={true}
         />
       </View>
     </View>
   );
+}
+
+
+
 }
 
 const styles = StyleSheet.create({
