@@ -23,7 +23,10 @@ export class DatabaseStorage implements IStorage {
 
   constructor() {
     if (!process.env.DATABASE_URL) {
-      throw new Error("DATABASE_URL must be set to use DatabaseStorage");
+      // BUG 5 FIX: Don't throw — MemStorage ternary on line below handles the fallback.
+      // Throwing here crashes the entire server before the ternary can route to MemStorage.
+      console.warn("[Storage] DATABASE_URL not set — DatabaseStorage should not be used directly.");
+      return;
     }
     const pool = new Pool({ connectionString: process.env.DATABASE_URL });
     this.db = drizzle(pool);
