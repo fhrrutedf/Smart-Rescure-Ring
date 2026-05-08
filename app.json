@@ -1,11 +1,11 @@
 {
   "expo": {
-    "name": "Smart Rescuer",
-    "slug": "smartrescuer",
+    "name": "PULSE RING",
+    "slug": "pulse-ring",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "smartrescuer",
+    "scheme": "pulse-ring",
     "userInterfaceStyle": "dark",
     "newArchEnabled": true,
     "splash": {
@@ -40,7 +40,7 @@
       [
         "expo-camera",
         {
-          "cameraPermission": "Allow Smart Rescuer AI to access your camera for emergency detection."
+          "cameraPermission": "Allow PULSE RING AI to access your camera for emergency detection."
         }
       ],
       [
@@ -59,7 +59,7 @@
     "extra": {
       "router": {},
       "eas": {
-        "projectId": "9ecb58c1-906c-4605-9a9f-46ec3ddff8ee"
+        "projectId": "0af55a2e-8ff8-4401-b192-9453f99e0c84"
       }
     }
   }

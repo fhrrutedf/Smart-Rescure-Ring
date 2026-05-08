@@ -2,6 +2,7 @@ import React from "react";
 import {
   View,
   Text,
+  Image,
   StyleSheet,
   StatusBar,
   Platform,
@@ -27,11 +28,11 @@ export default function HomeScreen() {
 
       <View style={styles.appBar}>
         <View style={styles.appBarLeft}>
-          <MaterialCommunityIcons name="shield-plus" size={18} color={COLORS.accent} />
-          <View>
-
-            <Text style={styles.appBarTitle}>Smart Rescuer AI</Text>
-          </View>
+          <Image
+            source={require("@/assets/images/logo.jpg")}
+            style={styles.appBarLogo}
+            resizeMode="contain"
+          />
         </View>
         <View style={styles.appBarRight}>
           <View style={styles.offlineBadge}>
@@ -104,12 +105,9 @@ const styles = StyleSheet.create({
     gap: 8,
   },
 
-  appBarTitle: {
-    color: COLORS.text,
-    fontSize: 16,
-    fontWeight: "700",
-    fontFamily: "Inter_700Bold",
-    letterSpacing: 0.2,
+  appBarLogo: {
+    width: 120,
+    height: 36,
   },
   appBarRight: {
     flexDirection: "row",

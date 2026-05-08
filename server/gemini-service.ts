@@ -111,7 +111,7 @@ async function callOpenRouter(imageBase64: string, prompt: string, model: string
         "Content-Type": "application/json",
         "Authorization": `Bearer ${orKey}`,
         "HTTP-Referer": "https://smart-rescuer.app",
-        "X-Title": "Smart Rescuer Ring",
+        "X-Title": "PULSE RING",
       },
       body: JSON.stringify({
         model,
