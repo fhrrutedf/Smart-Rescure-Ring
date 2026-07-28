@@ -1,0 +1,134 @@
+You are a senior mobile AI engineer.
+
+IMPORTANT:
+DO NOT change the existing UI design.
+DO NOT change layout.
+DO NOT change styling.
+DO NOT change colors.
+DO NOT change structure.
+DO NOT move elements.
+DO NOT redesign anything.
+
+Keep the EXACT same app design and structure.
+
+Your task is ONLY:
+
+Upgrade and improve the CAMERA AI DETECTION SYSTEM.
+
+-----------------------------------------
+GOAL
+-----------------------------------------
+
+Make the camera intelligent, professional, and visually strong.
+
+When user presses:
+"Enable Camera"
+
+The camera must:
+
+1) Open normally (as already designed).
+2) Start real-time AI detection.
+3) Detect visible medical emergencies.
+4) Draw clear bounding boxes around detected problems.
+
+-----------------------------------------
+DETECTION REQUIREMENTS
+-----------------------------------------
+
+The AI must detect:
+
+- Bleeding (visible blood)
+- Burns (skin damage / darkened or blistered skin)
+- Visible fractures (unnatural limb angle)
+- Person fallen
+- Unconscious / motionless body
+- Major visible injury
+
+-----------------------------------------
+BOUNDING BOX REQUIREMENTS
+-----------------------------------------
+
+Keep the same overlay style already used in the design.
+
+BUT improve detection and drawing quality:
+
+For each detected object:
+
+- Draw a clean rectangle
+- Use smooth edges
+- Show label + confidence %
+- Color coding:
+    RED → Bleeding / Fracture (Critical)
+    ORANGE → Burn
+    YELLOW → Fallen
+    BLUE → Minor injury
+
+Boxes must:
+- Not flicker
+- Smooth transition
+- Update per frame
+- Disappear when object gone
+
+-----------------------------------------
+AI IMPROVEMENT REQUIREMENTS
+-----------------------------------------
+
+Improve computer vision accuracy.
+
+Use:
+- YOLOv8 Nano TFLite model (optimized)
+- On-device inference
+- GPU delegate if available
+- Background inference thread
+
+Minimum:
+- 5 FPS real-time detection
+- No UI freezing
+- No lag
+
+-----------------------------------------
+IMPORTANT LIMITATIONS
+-----------------------------------------
+
+DO NOT:
+- Add new screens
+- Change UI structure
+- Modify layout
+- Replace navigation
+- Convert to web
+- Use internet
+- Use cloud API
+
+Everything must run locally.
+
+-----------------------------------------
+CODE REQUIREMENTS
+-----------------------------------------
+
+Only update:
+
+- Vision detection logic
+- Inference engine
+- Bounding box drawing performance
+
+Keep:
+- Existing UI
+- Existing app architecture
+- Existing button behavior
+
+-----------------------------------------
+FINAL RESULT
+-----------------------------------------
+
+The app should look EXACTLY the same.
+
+But the camera should now:
+
+- Be smarter
+- Detect clearly
+- Draw strong bounding boxes
+- Visually feel like a professional AI medical scanner
+
+This is a camera intelligence upgrade only.
+
+Start now.
