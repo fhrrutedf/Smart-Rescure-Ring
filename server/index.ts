@@ -178,7 +178,7 @@ function configureExpoAndLanding(app: express.Application) {
       return next();
     }
 
-    if (req.path !== "/" && req.path !== "/manifest" && req.path !== "/android" && req.path !== "/ios") {
+    if (req.path !== "/" && req.path !== "/manifest" && req.path !== "/android" && req.path !== "/ios" && req.path !== "/app") {
       return next();
     }
 
