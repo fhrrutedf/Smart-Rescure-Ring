@@ -1,0 +1,64 @@
+{
+  "expo": {
+    "name": "PULSE RING",
+    "slug": "smartrescuer",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/images/logo.jpg",
+    "scheme": "pulse-ring",
+    "userInterfaceStyle": "dark",
+    "newArchEnabled": true,
+    "splash": {
+      "image": "./assets/images/logo.jpg",
+      "resizeMode": "contain",
+      "backgroundColor": "#0A0C0E"
+    },
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.smartrescuer.app"
+    },
+    "android": {
+      "package": "com.smartrescuer.app",
+      "adaptiveIcon": {
+        "backgroundColor": "#0A0C0E",
+        "foregroundImage": "./assets/images/logo.jpg"
+      },
+      "permissions": [
+        "android.permission.CAMERA",
+        "android.permission.RECORD_AUDIO"
+      ]
+    },
+    "web": {
+      "favicon": "./assets/images/logo.jpg"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-font",
+      "expo-web-browser",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Allow PULSE RING AI to access your camera for emergency detection."
+        }
+      ],
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "usesCleartextTraffic": true
+          }
+        }
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": true,
+      "reactCompiler": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "0af55a2e-8ff8-4401-b192-9453f99e0c84"
+      }
+    }
+  }
+}

@@ -1,0 +1,237 @@
+You are a senior mobile AI engineer.
+
+Build a FULL Android mobile application (NOT a website) called:
+
+Smart Rescuer AI
+
+IMPORTANT REQUIREMENTS:
+- The app must work 100% OFFLINE.
+- NO internet connection required.
+- NO cloud APIs.
+- NO external server calls.
+- All AI processing must run locally on the device.
+- Use the phone camera for real-time AI analysis.
+- Use Bluetooth (BLE) to receive vital signs from a smart ring.
+- Clean architecture.
+- Secure local processing.
+- Production-ready structure.
+- Modular code.
+
+-----------------------------------
+APP PURPOSE
+-----------------------------------
+
+Smart Rescuer AI is an offline emergency detection app that:
+
+1) Uses the phone camera to analyze emergencies in real time.
+2) Receives vital data from a smart ring via Bluetooth.
+3) Fuses vision + health data.
+4) Detects emergency conditions.
+5) Displays medical instructions immediately.
+
+-----------------------------------
+TECH STACK REQUIREMENTS
+-----------------------------------
+
+Build for ANDROID using:
+
+- Kotlin (preferred)
+- CameraX for camera handling
+- TensorFlow Lite (TFLite) for on-device AI
+- Bluetooth Low Energy (BLE) for ring connection
+- MVVM architecture
+- No Firebase
+- No cloud backend
+- No internet permission required
+
+-----------------------------------
+UI LAYOUT STRUCTURE (VERY IMPORTANT)
+-----------------------------------
+
+The app UI must be structured EXACTLY like this:
+
+-----------------------------------
+TOP SECTION (Full width - 50% height)
+-----------------------------------
+Live Camera View with AI Overlay
+
+- Real-time camera feed
+- AI bounding boxes (fall, bleeding, collapse detection)
+- Status indicator:
+   GREEN = Normal
+   YELLOW = Warning
+   RED = Emergency detected
+
+-----------------------------------
+SECOND SECTION
+-----------------------------------
+Vital Signs Panel
+
+Display:
+- Heart Rate (BPM)
+- SpO2 (%)
+- Body Temperature (°C)
+- Motion Status
+- Connection Status (Ring Connected / Disconnected)
+
+-----------------------------------
+THIRD SECTION
+-----------------------------------
+Diagnosis Panel
+
+After AI fusion analysis display:
+
+- "No emergency detected"
+- OR "Possible Fall"
+- OR "Bleeding detected"
+- OR "Cardiac anomaly detected"
+- OR "Critical Emergency"
+
+-----------------------------------
+FOURTH SECTION
+-----------------------------------
+Medical Instructions Panel
+
+Show local first aid instructions depending on detected issue:
+
+If fall:
+- Keep patient still
+- Check breathing
+- Do not move neck
+
+If bleeding:
+- Apply pressure
+- Elevate limb
+- Use clean cloth
+
+If cardiac:
+- Check responsiveness
+- Begin CPR
+- Call emergency
+
+All instructions stored locally in JSON file.
+
+-----------------------------------
+AI REQUIREMENTS
+-----------------------------------
+
+1) Vision AI Model:
+- Use TFLite YOLOv8 Nano model
+- Detect:
+   - Person fallen
+   - Visible bleeding
+   - Motionless body
+- Real-time inference (at least 5 FPS)
+
+2) Vital AI Model:
+- Simple anomaly detection:
+   - HR > 140 or < 40
+   - SpO2 < 90%
+   - Temp > 39°C
+- Also calculate moving average
+- Detect abnormal trends
+
+3) Fusion Engine:
+Emergency triggered only if:
+
+- Vision alert + abnormal vitals
+OR
+- Extreme vitals alone (critical thresholds)
+
+-----------------------------------
+BLUETOOTH REQUIREMENTS
+-----------------------------------
+
+- Use BLE
+- Connect to Smart Ring
+- Read characteristics:
+   - heart_rate
+   - spo2
+   - temperature
+   - motion_flag
+- Auto reconnect if disconnected
+- Show connection status
+
+-----------------------------------
+PERFORMANCE REQUIREMENTS
+-----------------------------------
+
+- All AI runs on device
+- No lag UI
+- Multithreading:
+   - Camera thread
+   - BLE thread
+   - AI inference thread
+- Efficient memory usage
+- Battery optimized
+
+-----------------------------------
+SECURITY REQUIREMENTS
+-----------------------------------
+
+- No internet permission
+- No data sent outside device
+- Encrypted BLE communication
+- No background hidden processes
+
+-----------------------------------
+APP FLOW
+-----------------------------------
+
+1) App opens
+2) Camera automatically starts
+3) BLE auto-connects to ring
+4) AI runs continuously
+5) Vitals update live
+6) Diagnosis updates live
+7) Medical instructions update automatically
+
+-----------------------------------
+CODE STRUCTURE
+-----------------------------------
+
+Organize project cleanly:
+
+- data/
+- domain/
+- presentation/
+- ai/
+- bluetooth/
+- utils/
+
+Include:
+
+- ViewModel
+- Repository pattern
+- Separate AI inference class
+- Separate BLE manager class
+- Separate Fusion Engine class
+
+-----------------------------------
+DELIVERABLES
+-----------------------------------
+
+Generate:
+
+1) Full Android project structure
+2) MainActivity
+3) Camera implementation
+4) BLE manager
+5) AI inference class
+6) Fusion logic
+7) UI layout XML
+8) Sample JSON for instructions
+9) Clear comments in code
+10) Build-ready project
+
+-----------------------------------
+
+This must be a MOBILE APP, not a web app.
+
+Do not use HTML.
+Do not use React web.
+Do not use Node server.
+
+Only native Android app.
+
+Make the code clean, scalable, and production-ready.
