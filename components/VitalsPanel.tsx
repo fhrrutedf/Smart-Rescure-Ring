@@ -122,7 +122,7 @@ export function VitalsPanel() {
           <MaterialCommunityIcons name="heart-pulse" size={15} color={COLORS.accent} />
           <Text style={styles.headerTitle}>العلامات الحيوية</Text>
         </View>
-        <ConnectionBadge connected={true} />
+        <ConnectionBadge connected={false} />
       </View>
 
       <View style={styles.grid}>
