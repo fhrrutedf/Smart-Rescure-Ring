@@ -40,8 +40,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // TTS API — Microsoft حامد السعودي primary, Google & ElevenLabs fallbacks
-  // Support both POST (for typical usage) and GET (for FileSystem.downloadAsync on mobile)
+// TTS API — Google Translate TTS (primary, works globally)
+// ElevenLabs as secondary, Microsoft edge-tts removed (broken tsx import)
+// Support both POST and GET (for FileSystem.downloadAsync on mobile)
   app.all("/api/tts", async (req, res) => {
     try {
       const text = req.body?.text || req.query?.text;
@@ -54,41 +55,46 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let audioBuffer: Buffer | null = null;
       let engine = "none";
 
-      // 1️⃣ ElevenLabs — Premium Quality (Primary)
+      // 1️⃣ Google Translate TTS — Works globally, no API key needed (Primary)
+      console.log("[TTS] 🔊 Trying Google Translate TTS...");
       try {
-        audioBuffer = await generateElevenLabsSpeech(text);
-        if (audioBuffer) engine = "elevenlabs";
-      } catch (e) {
-        console.warn("[TTS] ElevenLabs failed, trying Google...");
+        audioBuffer = await generateGoogleTTS(text, lang || "ar");
+        if (audioBuffer) {
+          engine = "google";
+          console.log("[TTS] 🔊 Using Google Translate TTS ✅");
+        }
+      } catch (e: any) {
+        console.warn(`[TTS] ⚠️ Google TTS failed: ${e?.message ?? e}`);
       }
 
-      // 2️⃣ Google Translate TTS — Free and Reliable (Fallback)
+      // 2️⃣ ElevenLabs — Premium Quality (Fallback — may be blocked by Cloudflare in some regions)
       if (!audioBuffer) {
-        try {
-          audioBuffer = await generateGoogleTTS(text, lang || "ar");
-          if (audioBuffer) engine = "google";
-        } catch (e) {
-          console.warn("[TTS] Google TTS failed, trying Microsoft...");
+        const hasElevenLabsKey = !!process.env.ELEVENLABS_API_KEY;
+        if (hasElevenLabsKey) {
+          console.log("[TTS] 🔊 Fallback to ElevenLabs...");
+          try {
+            audioBuffer = await generateElevenLabsSpeech(text);
+            if (audioBuffer) {
+              engine = "elevenlabs";
+              console.log("[TTS] 🔊 Using ElevenLabs ✅");
+            }
+          } catch (e: any) {
+            console.warn(`[TTS] ⚠️ ElevenLabs failed: ${e?.message ?? e}`);
+          }
+        } else {
+          console.log("[TTS] ⚠️ ELEVENLABS_API_KEY not set — skipping.");
         }
       }
 
-      // 3️⃣ Microsoft Edge TTS — Fallback only (May be blocked on Vercel)
       if (!audioBuffer) {
-        try {
-          audioBuffer = await generateMicrosoftSpeech(text);
-          if (audioBuffer) engine = "microsoft-hamed";
-        } catch (e) {
-          console.warn("[TTS] Microsoft Hamid also failed.");
-        }
+        console.error("[TTS] ❌ All TTS engines failed.");
+        return res.status(503).json({ error: "All TTS engines unavailable. Please try again later." });
       }
 
-      if (!audioBuffer) {
-        console.error("[TTS] All TTS engines failed.");
-        return res.status(500).json({ error: "Failed to generate speech" });
-      }
-
-      console.log(`[TTS] ✅ Audio delivered via ${engine} — ${audioBuffer.length} bytes`);
+      console.log(`[TTS] ✅ Audio delivered via [${engine}] — ${audioBuffer.length} bytes`);
       res.setHeader("Content-Type", "audio/mpeg");
+      res.setHeader("Content-Length", audioBuffer.length);
+      res.setHeader("Cache-Control", "no-cache");
       res.setHeader("X-TTS-Engine", engine);
       res.send(audioBuffer);
     } catch (error) {
@@ -138,8 +144,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       if (analysis.riskScore > 0.7) {
         const warningText = analysis.recommendation;
-        const audioBuffer = await generateMicrosoftSpeech(warningText);
-        
+
+        // Try TTS engines: Google (primary, works globally) → ElevenLabs → skip Microsoft (broken)
+        let audioBuffer: Buffer | null = null;
+        try {
+          console.log("[Sensors] 🔊 Trying Google TTS for alert audio...");
+          audioBuffer = await generateGoogleTTS(warningText, "ar");
+          if (!audioBuffer && process.env.ELEVENLABS_API_KEY) {
+            console.log("[Sensors] 🔊 Fallback to ElevenLabs for alert audio...");
+            audioBuffer = await generateElevenLabsSpeech(warningText);
+          }
+        } catch (ttsErr: any) {
+          console.warn(`[Sensors] ⚠️ TTS generation failed (non-fatal): ${ttsErr?.message ?? ttsErr}`);
+        }
+
         await storage.saveDetection({
           detections: [{
             class: "CRITICAL_ANOMALY",
@@ -153,7 +171,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.json({ 
           status: "CRITICAL", 
           analysis, 
-          audioBase64: audioBuffer?.toString('base64') 
+          audioBase64: audioBuffer?.toString('base64') ?? null
         });
       }
 

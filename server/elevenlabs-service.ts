@@ -103,7 +103,10 @@ async function callElevenLabs(
 
 export async function generateSpeech(text: string): Promise<Buffer | null> {
   const apiKey = getApiKey();
-  if (!apiKey) return null;
+  if (!apiKey) {
+    console.warn("[ElevenLabs] 🔇 No API key — skipping ElevenLabs.");
+    return null;
+  }
 
   if (!text || text.trim().length === 0) {
     console.warn("[ElevenLabs] Empty text provided.");
@@ -111,6 +114,7 @@ export async function generateSpeech(text: string): Promise<Buffer | null> {
   }
 
   const voiceIds = getVoiceIds();
+  console.log(`[ElevenLabs] 🔊 Starting TTS — ${voiceIds.length} voice(s) to try, text length: ${text.trim().length} chars`);
 
   // Try each voice ID until one works
   for (const voiceId of voiceIds) {

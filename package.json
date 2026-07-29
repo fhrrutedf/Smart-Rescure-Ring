@@ -5,6 +5,7 @@
   "scripts": {
     "postinstall": "node scripts/init-env.js && patch-package",
     "build": "npm run build:web && npm run server:build",
+    "test:eleven": "node scripts/test_elevenlabs.js",
     "build:web": "npx expo export --platform web --output-dir dist",
     "dev": "npm run server:dev",
     "full": "concurrently \"npm run server:dev\" \"npm run expo:dev\"",

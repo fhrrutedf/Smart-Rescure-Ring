@@ -2,11 +2,10 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 
 const OPENROUTER_API_URL = "https://openrouter.ai/api/v1/chat/completions";
 
-// Models ordered by reliability — newer flash models first
+// Models ordered by reliability — stable free-tier models only
 const VISION_MODELS = [
-  "google/gemini-2.0-flash-001",
-  "google/gemini-flash-1.5-8b",
   "google/gemini-flash-1.5",
+  "google/gemini-pro-1.5",
 ];
 
 function getOpenRouterApiKey() { return process.env.OPENROUTER_API_KEY; }
@@ -77,13 +76,22 @@ async function callGoogleGeminiDirect(imageBase64: string, prompt: string): Prom
   
   const genAI = new GoogleGenerativeAI(apiKey);
   
-  // Try newer models first for better vision analysis
-  const models = ["gemini-1.5-flash", "gemini-1.5-flash-8b", "gemini-pro-vision"];
+  // Models listed with the API version they support.
+  // gemini-1.5-* lives on stable v1; gemini-2.0-flash lives on v1beta.
+  const modelConfigs: Array<{ model: string; apiVersion: "v1" | "v1beta" }> = [
+    { model: "gemini-1.5-flash",   apiVersion: "v1" },
+    { model: "gemini-1.5-pro",     apiVersion: "v1" },
+    { model: "gemini-2.0-flash",   apiVersion: "v1beta" },
+  ];
   
-  for (const modelName of models) {
+  for (const { model: modelName, apiVersion } of modelConfigs) {
     try {
-      console.log(`[AI] Trying Gemini Direct: ${modelName}`);
-      const model = genAI.getGenerativeModel({ model: modelName });
+      console.log(`[AI] Trying Gemini Direct: ${modelName} (${apiVersion})`);
+      // Pass apiVersion in requestOptions to override the SDK default (v1beta)
+      const model = genAI.getGenerativeModel(
+        { model: modelName },
+        { apiVersion }
+      );
       const result = await model.generateContent([
         prompt,
         { inlineData: { data: imageBase64, mimeType: "image/jpeg" } }
@@ -234,7 +242,11 @@ export async function analyzeHealthAnomalies(data: {
   const apiKey = getGeminiApiKey();
   if (!apiKey) throw new Error("No Gemini API Key");
   const genAI = new GoogleGenerativeAI(apiKey);
-  const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+  // Use stable v1 endpoint — gemini-1.5-flash lives on v1, not v1beta
+  const model = genAI.getGenerativeModel(
+    { model: "gemini-1.5-flash" },
+    { apiVersion: "v1" }
+  );
 
   const prompt = `You are an expert predictive medical AI. 
 Analyze these current vital signs against user history:
