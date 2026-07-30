@@ -12,7 +12,7 @@
         "gradleCommand": ":app:assembleDebug"
       },
       "env": {
-        "EXPO_PUBLIC_API_URL": "http://76.13.40.84"
+        "EXPO_PUBLIC_API_URL": "https://pulsering.vercel.app"
       }
     },
     "preview": {
@@ -23,7 +23,7 @@
         "gradleCommand": ":app:assembleRelease"
       },
       "env": {
-        "EXPO_PUBLIC_API_URL": "http://76.13.40.84"
+        "EXPO_PUBLIC_API_URL": "https://pulsering.vercel.app"
       }
     },
     "production": {
@@ -32,7 +32,7 @@
         "buildType": "app-bundle"
       },
       "env": {
-        "EXPO_PUBLIC_API_URL": "http://76.13.40.84"
+        "EXPO_PUBLIC_API_URL": "https://pulsering.vercel.app"
       }
     }
   },
@@ -40,3 +40,4 @@
     "production": {}
   }
 }
+
