@@ -4,12 +4,12 @@
     "slug": "smartrescuer",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/logo.jpg",
+    "icon": "./assets/images/logo.png",
     "scheme": "pulse-ring",
     "userInterfaceStyle": "dark",
     "newArchEnabled": true,
     "splash": {
-      "image": "./assets/images/logo.jpg",
+      "image": "./assets/images/logo.png",
       "resizeMode": "contain",
       "backgroundColor": "#0A0C0E"
     },
@@ -21,7 +21,7 @@
       "package": "com.smartrescuer.app",
       "adaptiveIcon": {
         "backgroundColor": "#0A0C0E",
-        "foregroundImage": "./assets/images/logo.jpg"
+        "foregroundImage": "./assets/images/logo.png"
       },
       "permissions": [
         "android.permission.CAMERA",
@@ -29,7 +29,7 @@
       ]
     },
     "web": {
-      "favicon": "./assets/images/logo.jpg"
+      "favicon": "./assets/images/logo.png"
     },
     "plugins": [
       "expo-router",
