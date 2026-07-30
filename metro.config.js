@@ -30,4 +30,25 @@ config.transformer = {
   unstable_allowRequireContext: true,
 };
 
+// ── Transform Ignore Patterns ─────────────────────────────────────────────────
+// Force Babel to transpile packages that use private class fields (#x, #y, etc.)
+// which Hermes does not support natively.
+const packagesToTranspile = [
+  "expo",
+  "expo-router",
+  "expo-asset",
+  "react-native",
+  "react-native-reanimated",
+  "react-native-worklets",
+  "react-native-gesture-handler",
+  "@react-native",
+  "@expo",
+  "react-native-svg",
+];
+
+config.transformer.transformIgnorePatterns = [
+  `node_modules/(?!(${packagesToTranspile.join("|")})/)`
+];
+
 module.exports = config;
+
