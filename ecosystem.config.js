@@ -1,8 +1,8 @@
-// ecosystem.config.js — PM2 configuration for Smart Rescuer Ring
+// ecosystem.config.js — PM2 configuration for PulseRing
 // Place this file in the project root on your VPS.
 // Usage:
 //   pm2 start ecosystem.config.js          # first launch
-//   pm2 restart smart-rescuer-ring         # after redeploy
+//   pm2 restart pulsering                  # after redeploy
 //   pm2 save                               # persist across VPS reboots
 //   pm2 startup                            # auto-start on boot
 
@@ -10,7 +10,7 @@ module.exports = {
   apps: [
     {
       // ── Identity ──────────────────────────────────────────────────────────
-      name: "smart-rescuer-ring",
+      name: "pulsering",
       script: "server_dist/index.js", // compiled output from npm run server:build
 
       // ── Runtime ───────────────────────────────────────────────────────────
@@ -24,7 +24,7 @@ module.exports = {
       // ── Environment ───────────────────────────────────────────────────────
       env: {
         NODE_ENV: "production",
-        PORT: 5001,
+        PORT: 8741,       // ⚠️ فريد لـ PulseRing — غيّره فقط لو تعارض مع مشروع آخر
         HOST: "0.0.0.0",
       },
       // PM2 loads the .env file from the project root automatically when using env_file:
